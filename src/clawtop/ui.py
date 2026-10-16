@@ -97,24 +97,25 @@ def status(snap: Snapshot, stale_min: float = STALE_IDLE_MIN) -> RenderableType:
     vm_used = snap.vm_total_mb - snap.vm_avail_mb
     g = Table.grid(padding=(0, 2))
     g.add_row("VM", bar(vm_used, snap.vm_total_mb), f"{gib(vm_used)} / {gib(snap.vm_total_mb)}")
-    g.add_row("", "", f"[dim]swap {gib(snap.swap_used_mb)} · pressure {snap.psi:.1f}%[/]")
+    notes = [f"VM       swap {gib(snap.swap_used_mb)} · memory pressure {snap.psi:.1f}%"]
     if snap.main_pid:
         limit_mb = (snap.cg_high or snap.cg_max or 0) / MB
         if snap.cg_high and snap.cg_max:
             detail = f"{gib(snap.cg_mb)} / {gib(snap.cg_high / MB)} high"
-            limits = f"max {gib(snap.cg_max / MB)} · "
+            cap = f" · hard max {gib(snap.cg_max / MB)}"
         else:
-            detail, limits = f"{gib(snap.cg_mb)} (no limit)", ""
+            detail, cap = f"{gib(snap.cg_mb)} (no limit)", ""
         g.add_row("Gateway", bar(snap.cg_mb, limit_mb or snap.vm_total_mb), detail)
-        g.add_row("", "", f"[dim]{limits}cache {gib(snap.cg_cache_mb)} (reclaimable)[/]")
-        g.add_row(
-            "", "", f"[dim]main {gib(snap.main_mb)} · stacks {gib(snap.stacks_mb)} · other {gib(snap.infra_mb)}[/]"
+        notes.append(
+            f"Gateway  main {gib(snap.main_mb)} · run stacks {gib(snap.stacks_mb)} · other {gib(snap.infra_mb)}"
         )
+        notes.append(f"         page cache {gib(snap.cg_cache_mb)} (reclaimable){cap}")
 
     stale = sum(1 for s in snap.stacks if s.idle_s > stale_min * 60)
     hint = "clawtop kill" + (f"   [{stale} stale: clawtop kill --idle {stale_min:g}]" if stale else "")
     body: list[RenderableType] = [
         g,
+        *(Text(n, style="dim") for n in notes),
         Text(),
         Text(f"Agent run stacks ({len(snap.stacks)})", style="bold"),
         stacks_table(snap.stacks, stale_min) if snap.stacks else Text("  none", style="dim"),

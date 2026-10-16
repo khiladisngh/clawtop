@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Show reclaimable page cache in the gateway breakdown (cgroup memory includes it).
+- Status layout fits 80 columns.
+
 ## 0.1.0
 
 - Typer CLI: `status`, `watch`, `kill`, `history`, `sessions list|archive|prune`, `sampler install|uninstall`.
