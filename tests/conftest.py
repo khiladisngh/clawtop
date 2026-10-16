@@ -53,7 +53,7 @@ def stack(pid: int, *, mb: float = 500, age_s: float = 60, idle_s: float | None 
 
 def snapshot(stacks: list[Stack]) -> Snapshot:
     return Snapshot(
-        ts=1_700_000_000, main_pid=100, main_mb=2000, main_age_s=600, cg_mb=4000, cg_high=11 << 30,
+        ts=1_700_000_000, main_pid=100, main_mb=2000, main_age_s=600, cg_mb=4000, cg_cache_mb=900, cg_high=11 << 30,
         cg_max=13 << 30, vm_total_mb=16000, vm_avail_mb=12000, swap_used_mb=0, psi=0.0, infra_mb=200,
         stacks=stacks,
     )  # fmt: skip

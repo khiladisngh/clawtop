@@ -108,11 +108,11 @@ def status(snap: Snapshot, stale_min: float = STALE_IDLE_MIN) -> RenderableType:
         else:
             detail = f"{gib(snap.cg_mb)} (no cgroup limit)"
         g.add_row("Gateway", bar(snap.cg_mb, limit_mb or snap.vm_total_mb), detail)
-        g.add_row(
-            "",
-            "",
-            f"[dim]main {gib(snap.main_mb)} · run stacks {gib(snap.stacks_mb)} · other {gib(snap.infra_mb)}[/]",
+        parts = (
+            f"main {gib(snap.main_mb)} · run stacks {gib(snap.stacks_mb)} · other {gib(snap.infra_mb)}"
+            f" · page cache {gib(snap.cg_cache_mb)} (reclaimable)"
         )
+        g.add_row("", "", f"[dim]{parts}[/]")
 
     stale = sum(1 for s in snap.stacks if s.idle_s > stale_min * 60)
     hint = "clawtop kill" + (f"   [{stale} stale: clawtop kill --idle {stale_min:g}]" if stale else "")

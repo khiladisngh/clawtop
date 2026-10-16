@@ -118,6 +118,7 @@ class Snapshot:
     main_mb: float
     main_age_s: float
     cg_mb: float
+    cg_cache_mb: float
     cg_high: int | None
     cg_max: int | None
     vm_total_mb: float
@@ -284,6 +285,11 @@ def take_snapshot(
     meminfo = {ln.split(":")[0]: int(ln.split()[1]) for ln in _read(root / "meminfo").splitlines() if ln.strip()}
     psi = re.search(r"some avg10=([\d.]+)", _read(root / "pressure" / "memory"))
 
+    cache_mb = 0.0
+    if cg:
+        m = re.search(r"^file (\d+)", _read(cg / "memory.stat"), re.M)
+        cache_mb = int(m.group(1)) / MB if m else 0.0
+
     def limit(name: str) -> int | None:
         v = _read(cg / name, "max").strip() if cg else "max"
         return None if v == "max" else int(v)
@@ -294,6 +300,7 @@ def take_snapshot(
         main_mb=procs[main].mb if main in procs else 0.0,
         main_age_s=procs[main].age_s if main in procs else 0.0,
         cg_mb=int(_read(cg / "memory.current", "0")) / MB if cg else 0.0,
+        cg_cache_mb=cache_mb,
         cg_high=limit("memory.high"),
         cg_max=limit("memory.max"),
         vm_total_mb=meminfo.get("MemTotal", 0) / 1024,
