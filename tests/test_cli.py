@@ -113,3 +113,11 @@ def test_history_window_must_be_valid(tmp_path: object) -> None:
     assert r.exit_code != 0
     r = runner.invoke(cli.app, ["history", "--last", "6h", "--log", "/nonexistent"])
     assert r.exit_code == 0 and "No samples" in r.output
+
+
+def test_status_when_gateway_is_down_still_lists_leftover_orphans(monkeypatch: pytest.MonkeyPatch) -> None:
+    snap = snapshot([stack(300, kind="orphan")])
+    snap.main_pid = 0
+    monkeypatch.setattr(cli, "take_snapshot", lambda: snap)
+    r = runner.invoke(cli.app, [])
+    assert "NOT RUNNING" in r.output and "ORPHAN" in r.output

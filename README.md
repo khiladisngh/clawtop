@@ -4,20 +4,21 @@
 run, kill the runaway ones, and keep your open sessions tidy.
 
 ```text
-╭─ gateway pid 999  up 21m ─────────────────────────────────────────────────────╮
-│                                                                               │
-│  VM       ██████░░░░░░░░░░░░░░░░░░  27%  4.3G / 15.6G   swap 0M   pressure 0.0%│
-│  Gateway  ████████░░░░░░░░░░░░░░░░  41%  4.5G / 11.0G high, 13.0G max         │
-│           main 1.9G · run stacks 2.1G · other 0.5G                            │
-│                                                                               │
-│  Agent run stacks (3)                                                         │
-│     PID  AGENT  SESSION   IDLE   AGE   CTX    MEM  PARTS        FLAG         │
-│    1860  maya   3e6eaad5    2m    8m  1.0M  808M  notion,rea                  │
-│    2707  atlas  5c897a63   54m   58m  0.4M  412M  notion,rea    STALE         │
-│    3419  forge  1985e588    4m    9m  2.1M  143M  notion,rea                  │
-│                                                                               │
-│  clawtop kill   [1 stale: clawtop kill --idle 30]                             │
-╰───────────────────────────────────────────────────────────────────────────────╯
+╭─ gateway pid 999  up 34m ────────────────────────────────────────────────────╮
+│                                                                              │
+│  VM       █████████░░░░░░░░░░░░░░░  37%  5.8G / 15.6G                        │
+│           swap 0M · pressure 0.0%                                            │
+│  Gateway  ██████████████████░░░░░░  73%  8.1G / 11.0G high                   │
+│           max 13.0G · cache 2.8G (reclaimable)                               │
+│           main 2.2G · stacks 1.2G · other 1.7G                               │
+│                                                                              │
+│  Agent run stacks (2)                                                        │
+│   PID  AGENT  SESSION   IDLE  AGE   CTX   MEM  PARTS        FLAG            │
+│  6226  forge  93908993    2s  11s  0.2M  734M  notion,rea                    │
+│  4945  forge  a2a82d23   54m  58m  0.5M  520M  notion,rea    STALE           │
+│                                                                              │
+│  clawtop kill   [1 stale: clawtop kill --idle 30]                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## Why
