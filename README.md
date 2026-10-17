@@ -3,6 +3,7 @@
 [![ci](https://github.com/khiladisngh/clawtop/actions/workflows/ci.yml/badge.svg)](https://github.com/khiladisngh/clawtop/actions/workflows/ci.yml)
 [![docs](https://github.com/khiladisngh/clawtop/actions/workflows/docs.yml/badge.svg)](https://khiladisngh.github.io/clawtop/)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khiladisngh/clawtop/blob/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/clawtop.svg)](https://pypi.org/project/clawtop/)
 ![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 
 **htop for [OpenClaw](https://openclaw.ai).** See where your gateway's memory goes, per agent run; stop
@@ -16,8 +17,8 @@ the runaway ones safely; keep your sessions tidy.
   </a>
   <br>
   <sub><code>clawtop top</code> on sample data (kills simulated). Also:
-  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">a 1:43 video walkthrough</a>
-  of the command-line tools.</sub>
+  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">the 1:38 video walkthrough</a>
+  (install from PyPI, then the whole screen).</sub>
 </p>
 
 **Documentation: <https://khiladisngh.github.io/clawtop/>**
@@ -46,7 +47,7 @@ not by program name.
 On the Linux or WSL machine that runs the gateway (needs `uv` and Python 3.11+):
 
 ```sh
-uv tool install git+https://github.com/khiladisngh/clawtop
+uv tool install clawtop
 clawtop
 clawtop sampler install     # optional: per-minute memory history via a systemd user timer
 ```

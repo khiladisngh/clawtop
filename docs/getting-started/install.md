@@ -6,10 +6,14 @@ Windows it forwards to WSL.
 ## On the machine that runs the gateway (Linux or WSL)
 
 ```sh
-uv tool install git+https://github.com/khiladisngh/clawtop
+uv tool install clawtop
 clawtop --version
-clawtop
+clawtop        # one-shot overview
+clawtop top    # the interactive screen
 ```
+
+Or with pipx (`pipx install clawtop`) or pip (`pip install clawtop`) if you prefer. The package is on
+[PyPI](https://pypi.org/project/clawtop/).
 
 Optional: record a memory sample every minute, so `clawtop history` has data.
 
@@ -26,7 +30,7 @@ Install it on Windows too. Every command is forwarded into your WSL distro, so `
 PowerShell exactly as it does inside Linux:
 
 ```powershell
-uv tool install git+https://github.com/khiladisngh/clawtop
+uv tool install clawtop
 clawtop
 ```
 
@@ -39,7 +43,7 @@ set `CLAWTOP_WSL_DISTRO` and `CLAWTOP_WSL_USER`; see [Configuration](../referenc
 ## Update
 
 ```sh
-uv tool install --force git+https://github.com/khiladisngh/clawtop
+uv tool upgrade clawtop
 ```
 
 ## Requirements it checks at runtime

@@ -5,7 +5,7 @@ stop the runaway ones safely; keep your sessions tidy.
 
 [![clawtop status: VM and gateway memory bars and a table of agent runs](assets/walkthrough/poster.jpg)](getting-started/walkthrough.md)
 
-*A walkthrough video (1:43, sample data) is on the [walkthrough page](getting-started/walkthrough.md).*
+*A walkthrough video (1:38, sample data) is on the [walkthrough page](getting-started/walkthrough.md).*
 
 ## The problem
 

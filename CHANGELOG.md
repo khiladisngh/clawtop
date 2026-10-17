@@ -1,7 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+- Docs and README only, so the PyPI page is right: install is `uv tool install clawtop`, PyPI and version badges,
+  and a new walkthrough video (install from PyPI, then the whole `clawtop top` screen).
+
 ## 0.4.0
 
+- **Published on PyPI**: `uv tool install clawtop`.
+- Fix: while a dialog (help, kill or archive confirmation) was open, a refresh could not find the widgets behind it,
+  so the screen went stale. Widgets are now looked up on the main screen.
 - **`clawtop top`: an interactive htop/bottom-style screen** (Textual). Live VM and gateway meters, a
   memory graph scaled to the gateway limit, and three tabs:
   - **Runs**: sortable (`s`, `i`, click a header), filterable (`/`), mark rows (`space`, `A` for stale),
