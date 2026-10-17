@@ -12,6 +12,8 @@
     current tab are shown in the footer.
 - `clawtop watch` is removed; `top` replaces it.
 - `scripts/demo.py top` runs the same screen on sample data.
+- A slow refresh no longer starves the screen (a tick is skipped while one is in flight instead of cancelling
+  it), a second kill is refused while one is running, and quitting mid-refresh no longer prints a traceback.
 - New dependency: `textual`. It is imported only by `top`, so `status`, `kill` and the sampler start as
   fast as before.
 

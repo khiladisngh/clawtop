@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 
@@ -34,11 +35,17 @@ async def settle(app: ClawtopApp, pilot: Pilot[None]) -> None:
 
 
 def make_app(
-    stacks: list[Stack], *, killed: list[int] | None = None, survivors: bool = False, **kwargs: object
+    stacks: list[Stack],
+    *,
+    killed: list[int] | None = None,
+    survivors: bool = False,
+    kill_delay: float = 0.0,
+    **kwargs: object,
 ) -> ClawtopApp:
     snap = snapshot(stacks)
 
     def kill(s: Stack) -> list[int]:
+        time.sleep(kill_delay)
         if killed is not None:
             killed.append(s.pid)
         return [s.pid] if survivors else []
@@ -342,3 +349,38 @@ def test_arrow_keys_work_on_the_sessions_tab_without_clicking_first() -> None:
         assert tree.cursor_line == start + 2  # j/k work here too
 
     drive(make_app(three(), sessions_fn=_sessions), script)
+
+
+def test_a_snapshot_slower_than_the_interval_still_updates_and_does_not_pile_up() -> None:
+    calls = {"n": 0}
+
+    def slow() -> Snapshot:
+        calls["n"] += 1
+        time.sleep(0.35)  # takes longer than the 0.1 s interval, as on a machine under memory pressure
+        return snapshot(three())
+
+    app = ClawtopApp(interval=0.1, snapshot_fn=slow, log_path=Path("x"), load_history_fn=lambda _s: [])
+
+    async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
+        await pilot.pause(1.6)
+        assert app.snap is not None  # a new tick must not cancel the snapshot that is still running
+        assert len(app.shown) == 3
+        assert calls["n"] <= 6  # and ticks are skipped while one is in flight, not stacked up
+
+    drive(app, script)
+
+
+def test_a_second_kill_is_refused_while_the_first_is_still_running() -> None:
+    killed: list[int] = []
+
+    async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
+        await pilot.press("space", "space")  # mark two runs
+        await pilot.press("x", "y")
+        await pilot.pause(0.05)  # the first kill is now running (each stack takes 0.4 s)
+        await pilot.press("x")
+        assert not isinstance(app.screen, ConfirmScreen)  # refused, so it cannot cancel the first one
+        await pilot.pause(1.2)
+        await settle(app, pilot)
+        assert sorted(killed) == [20, 30]  # both runs of the first kill completed, each exactly once
+
+    drive(make_app(three(), killed=killed, kill_delay=0.4), script)

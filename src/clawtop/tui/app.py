@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -14,6 +15,7 @@ from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Input, Static, TabbedContent, TabPane, Tree
 from textual.widgets.tree import TreeNode
@@ -190,6 +192,8 @@ class ClawtopApp(App[None]):
         self.sessions_loaded_at = 0.0
         self._sessions_cache: list[sess.Session] | None = None
         self._timer = None
+        self._snapshot_busy = False
+        self._killing = False
 
     # ------------------------------------------------------------------ layout
 
@@ -244,18 +248,31 @@ class ClawtopApp(App[None]):
 
     # ------------------------------------------------------------------ data refresh
 
+    @staticmethod
+    def _if_screen_gone() -> contextlib.AbstractContextManager[None]:
+        """A worker that finishes while the app is quitting finds its widgets already removed."""
+        return contextlib.suppress(NoMatches)
+
     def _tick(self) -> None:
         if not self.paused:
             self.refresh_snapshot()
 
-    @work(exclusive=True, group="snapshot")
+    @work(group="snapshot")
     async def refresh_snapshot(self) -> None:
+        # Not exclusive: a new tick must never cancel a snapshot that is still running, or a machine
+        # slow enough to take longer than the interval (exactly when you open top) would never update.
+        if self._snapshot_busy:
+            return
+        self._snapshot_busy = True
         try:
             snap = await asyncio.to_thread(self._snapshot_fn)
         except Exception as e:
             self.notify(f"snapshot failed: {e}", severity="error", timeout=4)
             return
-        self.apply_snapshot(snap)
+        finally:
+            self._snapshot_busy = False
+        with self._if_screen_gone():
+            self.apply_snapshot(snap)
 
     def apply_snapshot(self, snap: Snapshot) -> None:
         self.snap = snap
@@ -489,6 +506,9 @@ class ClawtopApp(App[None]):
     # ------------------------------------------------------------------ kill
 
     def action_kill(self) -> None:
+        if self._killing:
+            self.notify("a kill is already running", severity="warning", timeout=2)
+            return
         targets = [s for s in self.shown if s.pid in self.marked] or ([h] if (h := self._highlighted()) else [])
         if not targets:
             self.notify("nothing to kill", severity="warning", timeout=2)
@@ -504,12 +524,16 @@ class ClawtopApp(App[None]):
 
         self.push_screen(ConfirmScreen(title, body), after)
 
-    @work(exclusive=True, group="kill")
+    @work(group="kill")
     async def _do_kill(self, targets: list[Stack]) -> None:
+        self._killing = True
         results: list[tuple[Stack, list[int]]] = []
-        for s in targets:
-            left = await asyncio.to_thread(self._kill_fn, s)
-            results.append((s, left))
+        try:
+            for s in targets:
+                left = await asyncio.to_thread(self._kill_fn, s)
+                results.append((s, left))
+        finally:
+            self._killing = False
         failed = [s for s, left in results if left]
         for s, _left in results:
             self.marked.discard(s.pid)
@@ -532,7 +556,8 @@ class ClawtopApp(App[None]):
             return
         self._sessions_cache = rows
         self.sessions_loaded_at = time.time()
-        self._fill_sessions()
+        with self._if_screen_gone():
+            self._fill_sessions()
 
     def _fill_sessions(self) -> None:
         rows = self._sessions_cache or []
@@ -580,7 +605,7 @@ class ClawtopApp(App[None]):
 
         self.push_screen(ConfirmScreen(f"Archive this {session.kind} session?", body), after)
 
-    @work(exclusive=True, group="archive")
+    @work(group="archive")
     async def _do_archive(self, session: sess.Session) -> None:
         try:
             results = await asyncio.to_thread(self._archive_fn, [session])
@@ -602,7 +627,8 @@ class ClawtopApp(App[None]):
         except Exception as e:
             body.update(Text(f"could not read history: {e}", style="red"))
             return
-        body.update(ui.history(rows, width=max(20, self.size.width - 22)))
+        with self._if_screen_gone():
+            body.update(ui.history(rows, width=max(20, self.size.width - 22)))
 
     def action_span(self) -> None:
         self.span_label = model.next_in([label for label, _ in model.SPANS], self.span_label)
