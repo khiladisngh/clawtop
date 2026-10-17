@@ -180,3 +180,14 @@ def test_empty_status_explains_embedded_runtimes_and_missing_workspaces(monkeypa
     assert "run inside the gateway" in runner.invoke(cli.app, []).output
     snap.workspaces_known = False
     assert "CLAWTOP_WORKSPACES" in runner.invoke(cli.app, []).output
+
+
+def test_top_refuses_to_run_without_a_terminal_and_points_at_status() -> None:
+    r = runner.invoke(cli.app, ["top"])  # CliRunner's stdout is not a tty
+    assert r.exit_code == 1
+    assert "needs a terminal" in r.output and "clawtop status" in r.output
+
+
+def test_the_old_watch_command_is_gone_in_favour_of_top() -> None:
+    assert runner.invoke(cli.app, ["watch"]).exit_code == 2  # unknown command
+    assert "top" in runner.invoke(cli.app, ["--help"]).output

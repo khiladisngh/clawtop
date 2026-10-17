@@ -11,10 +11,12 @@ option parsing and rendering are the real code. ``kill`` and ``sessions archive`
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import tempfile
 import time
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,7 +123,8 @@ def history_log() -> str:
     for i in range(360):
         t = 359 - i
         burst = max(0.0, 1 - abs(i - 215) / 40)  # peak about 2h20m ago
-        cg = 3300 + 5200 * burst + 900 * (i / 360) + (i % 7) * 18
+        tail = min(1.0, max(0.0, (i - 300) / 55))  # memory building up again over the last hour
+        cg = 3300 + 5200 * burst + 900 * (i / 360) + 3700 * tail + (i % 7) * 18
         stacks = [
             [4100 + k, a, 520 + 40 * k, 30 + k]
             for k, a in enumerate(["builder", "researcher", "writer", "builder", "builder"][: int(1 + 4 * burst)])
@@ -135,7 +138,37 @@ def history_log() -> str:
     return str(path)
 
 
+def live_snapshot() -> Snapshot:
+    """The sample snapshot with memory drifting a little, so the TUI graph moves."""
+    snap = snapshot()
+    elapsed = time.time() - NOW
+    snap.cg_mb += 380 * math.sin(time.time() / 4) + 120 * math.sin(time.time() / 1.3)
+    for s in snap.stacks:
+        s.leader = replace(s.leader, age_s=s.leader.age_s + elapsed)
+        if s.transcript:
+            s.transcript = Transcript(s.transcript.size_mb, s.transcript.idle_s + elapsed)
+    return snap
+
+
+def run_top() -> int:
+    """`demo.py top`: the real TUI on sample data. Kills and archives are simulated."""
+    from clawtop.tui.app import ClawtopApp
+
+    log = Path(os.environ.setdefault("CLAWTOP_LOG", history_log()))
+    ClawtopApp(
+        interval=float(os.environ.get("CLAWTOP_DEMO_INTERVAL", "2")),
+        snapshot_fn=live_snapshot,
+        sessions_fn=sessions,
+        archive_fn=lambda items: [{"key": s.key, "ok": True, "status": "archived"} for s in items],
+        kill_fn=lambda _stack: [],
+        log_path=log,
+    ).run()
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:2] == ["top"]:
+        return run_top()
     answers = [a for a in os.environ.get("CLAWTOP_DEMO_ANSWERS", "").split(";") if a]
     interactive = bool(answers)  # read once: answers are consumed as the prompts are answered
 

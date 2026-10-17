@@ -56,12 +56,12 @@ def _table(*cols: str, right: frozenset[str] = frozenset(), numbered: bool = Fal
     return t
 
 
-def _parts(parts: Sequence[str], each: int = 11) -> str:
+def parts_text(parts: Sequence[str], each: int = 11) -> str:
     short = [p if len(p) <= each else p[: each - 1] + "\u2026" for p in parts]
     return ",".join(short) or "-"
 
 
-def _no_stacks(snap: Snapshot) -> str:
+def no_stacks_note(snap: Snapshot) -> str:
     if not snap.workspaces_known:
         return "  none found: no agent workspaces in the OpenClaw config (set CLAWTOP_WORKSPACES)"
     return "  none. Runtimes that run inside the gateway (openclaw, codex, ...) have no process of their own."
@@ -91,7 +91,7 @@ def stacks_table(stacks: Sequence[Stack], stale_min: float = STALE_IDLE_MIN, num
             dur(s.age_s),
             f"{s.transcript.size_mb:.1f}M" if s.transcript else "-",
             Text(gib(s.mb), style=mem_style),
-            _parts(s.parts),
+            parts_text(s.parts),
             flag,
         ]
         t.add_row(*([str(i)] if numbered else []), *cells)
@@ -130,7 +130,7 @@ def status(snap: Snapshot, stale_min: float = STALE_IDLE_MIN) -> RenderableType:
         *(Text(n, style="dim") for n in notes),
         Text(),
         Text(f"Agent run stacks ({len(snap.stacks)})", style="bold"),
-        stacks_table(snap.stacks, stale_min) if snap.stacks else Text(_no_stacks(snap), style="dim"),
+        stacks_table(snap.stacks, stale_min) if snap.stacks else Text(no_stacks_note(snap), style="dim"),
         Text(),
         Text(hint, style="dim"),
     ]
@@ -165,7 +165,7 @@ def sessions_table(sessions: Sequence[Session], numbered: bool = False, titles: 
     return t
 
 
-def _node_text(n: Node) -> Text:
+def node_text(n: Node) -> Text:
     s = n.session
     t = Text()
     t.append(f"{s.kind} ", style="bold cyan" if s.kind == "subagent" else "bold")
@@ -192,7 +192,7 @@ def sessions_tree(roots: Sequence[Node]) -> RenderableType:
         tree = Tree(Text(agent, style="bold cyan"), guide_style="dim")
 
         def add(parent: Tree, n: Node) -> None:
-            branch = parent.add(_node_text(n))
+            branch = parent.add(node_text(n))
             for c in n.children:
                 add(branch, c)
 

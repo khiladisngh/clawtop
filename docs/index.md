@@ -33,6 +33,7 @@ clawtop makes that visible and fixable in one command.
 |---|---|
 | Install it | [Install](getting-started/install.md) |
 | See it in action | [Walkthrough video](getting-started/walkthrough.md) |
+| Watch it live, like htop | [Interactive view](guides/interactive-top.md) |
 | Find what is using memory | [Watch memory](guides/watch-memory.md) |
 | Free memory right now | [Stop runaway runs](guides/stop-runaway-runs.md) |
 | Close old sessions | [Manage sessions](guides/manage-sessions.md) |

@@ -8,7 +8,8 @@ uv run pytest --cov
 ```
 
 - Layout: `procs.py` (discovery and kill), `sessions.py` (`openclaw sessions` wrapper),
-  `history.py`, `ui.py` (pure Rich renderers), `cli.py` (Typer). Keep logic out of `cli.py`.
+  `history.py`, `ui.py` (pure Rich renderers), `cli.py` (Typer), `tui/` (the Textual app: `model.py` is pure and
+  tested without a terminal, `app.py` is the widgets and keys). Keep logic out of `cli.py`.
 - Tests that touch the process table build a fake `/proc` (see `tests/conftest.py`), so no real
   gateway is needed. They require Linux; macOS/Windows skip or fail on `os.getuid`/`/proc`.
 - A change that alters what can be killed must keep the invariant: never signal a process that

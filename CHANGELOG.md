@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+- **`clawtop top`: an interactive htop/bottom-style screen** (Textual). Live VM and gateway meters, a
+  memory graph scaled to the gateway limit, and three tabs:
+  - **Runs**: sortable (`s`, `i`, click a header), filterable (`/`), mark rows (`space`, `A` for stale),
+    kill with a confirmation (`x`), and a process tree of the highlighted run.
+  - **Sessions**: the subagent tree, archive with `a`, window with `w`.
+  - **History**: the sampler timeline, span with `h`.
+  - Also `p` pause, `r` refresh, `+`/`-` interval, `j`/`k`, `?` help. Only the keys that apply to the
+    current tab are shown in the footer.
+- `clawtop watch` is removed; `top` replaces it.
+- `scripts/demo.py top` runs the same screen on sample data.
+- New dependency: `textual`. It is imported only by `top`, so `status`, `kill` and the sampler start as
+  fast as before.
+
 ## 0.3.0
 
 - **Runtime-independent.** Run stacks are no longer found by looking for `claude`. A run is the top

@@ -19,6 +19,7 @@ nav = [
     { "Try it without a gateway" = "getting-started/try-without-a-gateway.md" },
   ] },
   { "Guides" = [
+    { "Interactive view (top)" = "guides/interactive-top.md" },
     { "Watch memory" = "guides/watch-memory.md" },
     { "Stop runaway runs" = "guides/stop-runaway-runs.md" },
     { "Manage sessions" = "guides/manage-sessions.md" },

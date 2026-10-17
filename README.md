@@ -9,14 +9,15 @@
 the runaway ones safely; keep your sessions tidy.
 
 <p align="center">
-  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">
-    <img src="https://raw.githubusercontent.com/khiladisngh/clawtop/main/docs/assets/walkthrough/preview.gif"
-         alt="Animated preview: clawtop status, the interactive kill picker, and the session tree"
-         width="760">
+  <a href="https://khiladisngh.github.io/clawtop/guides/interactive-top/">
+    <img src="https://raw.githubusercontent.com/khiladisngh/clawtop/main/docs/assets/tui/top.gif"
+         alt="Animated tour of clawtop top: live memory graph, sortable runs, kill confirmation, session tree and history"
+         width="860">
   </a>
   <br>
-  <sub>30-second preview. <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">Watch the full 1:43 walkthrough</a>
-  (sample data, simulated kills)</sub>
+  <sub><code>clawtop top</code> on sample data (kills simulated). Also:
+  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">a 1:43 video walkthrough</a>
+  of the command-line tools.</sub>
 </p>
 
 **Documentation: <https://khiladisngh.github.io/clawtop/>**
@@ -59,7 +60,7 @@ See [Install](https://khiladisngh.github.io/clawtop/getting-started/install/).
 | Command | What it does |
 |---|---|
 | `clawtop` / `status` | VM and gateway memory plus every agent run stack. `--json` for scripts. |
-| `clawtop watch` | Live view, refreshed every few seconds. |
+| `clawtop top` | Interactive htop-style screen: live memory graph, sortable runs, kill, session tree, history. |
 | `clawtop kill` | Interactive picker: choose rows by number, `stale` or `all`. |
 | `clawtop kill PID...` | Kill specific stacks by leader PID. |
 | `clawtop kill --idle 30` | Kill runs with no transcript activity for 30 minutes. |

@@ -56,7 +56,7 @@ instead of heavier.
 
 ```sh
 clawtop sampler install
-clawtop watch
+clawtop top
 ```
 
 ## What swap is, briefly

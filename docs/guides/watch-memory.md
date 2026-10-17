@@ -21,11 +21,11 @@ clawtop
 ## Live view
 
 ```sh
-clawtop watch              # refresh every 3 seconds
-clawtop watch -i 1         # every second
+clawtop top
 ```
 
-Quit with Ctrl-C.
+An interactive screen with sorting, filtering, marking, kill and a session tree. See
+[Interactive view](interactive-top.md).
 
 ## For scripts
 

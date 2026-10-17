@@ -1,6 +1,6 @@
 [project]
 name = "clawtop"
-version = "0.3.0"
+version = "0.4.0"
 description = "htop for OpenClaw: see gateway memory per agent run, kill runaway runs, and manage open sessions."
 readme = "README.md"
 license = "MIT"
@@ -20,7 +20,11 @@ classifiers = [
     "Topic :: System :: Monitoring",
 ]
 requires-python = ">=3.11"
-dependencies = ["typer>=0.15", "rich>=13"]
+dependencies = [
+    "typer>=0.15",
+    "rich>=13",
+    "textual>=8.2.8",
+]
 
 [project.urls]
 Homepage = "https://github.com/khiladisngh/clawtop"

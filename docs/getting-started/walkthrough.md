@@ -41,4 +41,4 @@ history, and the session tree.
 - **Simulated:** killing runs and archiving sessions. Nothing real is stopped or archived.
 - **Composed for the video:** the typing animation, the line-by-line reveal of each output, and the
   crossfades between scenes. The captions are added too.
-- **Not shown:** `watch` (a live, repainting view), `sampler install`, and the `--json` output.
+- **Not shown:** the interactive `clawtop top` screen (see [Interactive view](../guides/interactive-top.md), which has its own animated tour), `sampler install`, and the `--json` output.

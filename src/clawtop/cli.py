@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from importlib.metadata import version as pkg_version
@@ -69,7 +68,7 @@ def _openclaw_errors() -> Generator[None]:
         raise typer.Exit(1) from e
 
 
-# --------------------------------------------------------------------------- status / watch
+# --------------------------------------------------------------------------- status / top
 
 
 @app.command()
@@ -88,20 +87,17 @@ def status(
 
 
 @app.command()
-def watch(
-    interval: Annotated[float, typer.Option("--interval", "-i", min=0.5, help="Seconds between refreshes.")] = 3.0,
+def top(
+    interval: Annotated[float, typer.Option("--interval", "-i", min=0.5, help="Seconds between refreshes.")] = 2.0,
     stale_min: StaleOpt = ui.STALE_IDLE_MIN,
 ) -> None:
-    """Live view, refreshed every few seconds. Ctrl-C to quit."""
-    from rich.live import Live
+    """Interactive live view (like htop): runs, sessions and history. Press ? for keys, q to quit."""
+    if not sys.stdout.isatty():
+        err.print("[red]error:[/] `clawtop top` needs a terminal; use `clawtop status` for scripts.")
+        raise typer.Exit(1)
+    from clawtop.tui.app import run
 
-    try:
-        with Live(ui.status(take_snapshot(), stale_min), console=out, screen=True, auto_refresh=False) as live:
-            while True:
-                time.sleep(interval)
-                live.update(ui.status(take_snapshot(), stale_min), refresh=True)
-    except KeyboardInterrupt:
-        pass
+    run(interval=interval, stale_min=stale_min)
 
 
 # --------------------------------------------------------------------------- kill

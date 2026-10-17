@@ -14,12 +14,15 @@ With no command, prints the status overview. `--version` prints the version.
 | `--json` | off | Machine-readable output |
 | `--stale-min N` | 30 | Minutes without activity before a run is flagged `STALE` |
 
-## `clawtop watch`
+## `clawtop top`
+
+The interactive, htop-style screen. Needs a terminal (exit code 1 otherwise). All keys are listed in
+[Interactive view](../guides/interactive-top.md) and under `?` inside the program.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-i`, `--interval SEC` | 3 | Seconds between refreshes (minimum 0.5) |
-| `--stale-min N` | 30 | As above |
+| `-i`, `--interval SEC` | 2 | Seconds between refreshes (minimum 0.5; `+` and `-` change it while running) |
+| `--stale-min N` | 30 | Minutes without activity before a run is flagged `STALE` |
 
 ## `clawtop kill [PID...]`
 
