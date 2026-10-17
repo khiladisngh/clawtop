@@ -9,10 +9,11 @@ from rich.console import Group, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+from rich.tree import Tree
 
 from clawtop.history import Sample, sparkline
 from clawtop.procs import MB, Snapshot, Stack
-from clawtop.sessions import Session
+from clawtop.sessions import Node, Session
 
 STALE_IDLE_MIN = 30
 
@@ -125,9 +126,17 @@ def status(snap: Snapshot, stale_min: float = STALE_IDLE_MIN) -> RenderableType:
     return Panel(Group(*body), title=head, title_align="left", border_style="cyan", padding=(1, 2))
 
 
-def sessions_table(sessions: Sequence[Session], numbered: bool = False) -> Table:
+def sessions_table(sessions: Sequence[Session], numbered: bool = False, titles: bool = False) -> Table:
     t = _table(
-        "AGENT", "KIND", "STATUS", "IDLE", "TOKENS", "KEY", right=frozenset({"IDLE", "TOKENS"}), numbered=numbered
+        "AGENT",
+        "KIND",
+        "STATUS",
+        "IDLE",
+        "TOKENS",
+        *(["TITLE"] if titles else []),
+        "KEY",
+        right=frozenset({"IDLE", "TOKENS"}),
+        numbered=numbered,
     )
     for i, s in enumerate(sessions, 1):
         cells: list[RenderableType] = [
@@ -136,10 +145,46 @@ def sessions_table(sessions: Sequence[Session], numbered: bool = False) -> Table
             Text(s.status, style="green" if s.is_open else "dim"),
             dur(s.idle_s),
             f"{s.tokens:,}" if s.tokens else "-",
+            *([Text(s.label or "-", style="" if s.label else "dim")] if titles else []),
             Text(s.key, style="dim"),
         ]
         t.add_row(*([str(i)] if numbered else []), *cells)
     return t
+
+
+def _node_text(n: Node) -> Text:
+    s = n.session
+    t = Text()
+    t.append(f"{s.kind} ", style="bold cyan" if s.kind == "subagent" else "bold")
+    t.append(s.label or s.key.split(":", 2)[2], style="" if n.selected else "dim")
+    t.append(f"  {dur(s.idle_s)} idle", style="dim")
+    if s.tokens:
+        t.append(f"  {s.tokens:,} tok", style="dim")
+    if not s.is_open:
+        t.append(f"  [{s.status}]", style="dim")
+    if not n.selected:
+        t.append("  (parent)", style="dim italic")
+    return t
+
+
+def sessions_tree(roots: Sequence[Node]) -> RenderableType:
+    """One tree per agent: parent sessions with the subagents they spawned nested underneath."""
+    if not roots:
+        return Text("No sessions.", style="dim")
+    trees: list[RenderableType] = []
+    for agent in dict.fromkeys(r.session.agent for r in roots):
+        mine = [r for r in roots if r.session.agent == agent]
+        tree = Tree(Text(agent, style="bold cyan"), guide_style="dim")
+
+        def add(parent: Tree, n: Node) -> None:
+            branch = parent.add(_node_text(n))
+            for c in n.children:
+                add(branch, c)
+
+        for r in mine:
+            add(tree, r)
+        trees.append(tree)
+    return Group(*trees)
 
 
 def history(rows: Sequence[Sample], width: int = 64) -> RenderableType:

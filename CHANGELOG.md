@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- `sessions tree`: sessions grouped by agent with subagents nested under the session that spawned them; finished parents are shown dimmed for context.
+- `sessions list --titles`: show the session title (label). Archive and prune previews now show titles.
+
 ## 0.1.1
 
 - Show reclaimable page cache in the gateway breakdown (cgroup memory includes it).

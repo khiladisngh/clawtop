@@ -251,39 +251,66 @@ def sampler_uninstall() -> None:
 # --------------------------------------------------------------------------- sessions
 
 
-@sessions_app.command("list")
-def sessions_list(
-    all_: Annotated[bool, typer.Option("--all", "-a", help="Include finished sessions.")] = False,
-    agent: Annotated[list[str] | None, typer.Option("--agent", help="Only these agents.")] = None,
-    kind: Annotated[
-        list[str] | None,
-        typer.Option("--kind", help="Only these kinds (subagent, cron, discord, main, node)."),
-    ] = None,
-    idle_min: Annotated[float, typer.Option("--idle-min", help="Only sessions idle at least this long.")] = 0,
-) -> None:
-    """List sessions (open ones by default), longest idle first."""
-    with _openclaw_errors():
-        rows = sess.list_sessions()
-    if all_:
-        rows = sorted(rows, key=lambda s: -s.idle_s)
-        rows = [
+def _pick(
+    rows: list[sess.Session], all_: bool, agent: list[str] | None, kind: list[str] | None, idle_min: float
+) -> list[sess.Session]:
+    if not all_:
+        return sess.select(rows, idle_s=idle_min * 60, kinds=kind, agents=agent)
+    return sorted(
+        (
             s
             for s in rows
             if (not agent or s.agent in agent) and (not kind or s.kind in kind) and s.idle_s >= idle_min * 60
-        ]
-    else:
-        rows = sess.select(rows, idle_s=idle_min * 60, kinds=kind, agents=agent)
-    out.print(ui.sessions_table(rows))
+        ),
+        key=lambda s: -s.idle_s,
+    )
+
+
+AllOpt = Annotated[bool, typer.Option("--all", "-a", help="Include finished sessions.")]
+AgentOpt = Annotated[list[str] | None, typer.Option("--agent", help="Only these agents.")]
+KindOpt = Annotated[
+    list[str] | None, typer.Option("--kind", help="Only these kinds (subagent, cron, discord, main, node).")
+]
+IdleMinOpt = Annotated[float, typer.Option("--idle-min", help="Only sessions idle at least this long.")]
+
+
+@sessions_app.command("list")
+def sessions_list(
+    all_: AllOpt = False,
+    agent: AgentOpt = None,
+    kind: KindOpt = None,
+    idle_min: IdleMinOpt = 0,
+    titles: Annotated[bool, typer.Option("--titles", "-t", help="Add the session title (label) column.")] = False,
+) -> None:
+    """List sessions (open ones by default), longest idle first."""
+    with _openclaw_errors():
+        rows = _pick(sess.list_sessions(), all_, agent, kind, idle_min)
+    out.print(ui.sessions_table(rows, titles=titles))
     out.print(
         f"\n[dim]{len(rows)} session(s). Close with `clawtop sessions archive KEY` or `clawtop sessions prune`.[/]"
     )
+
+
+@sessions_app.command("tree")
+def sessions_tree(
+    all_: AllOpt = False,
+    agent: AgentOpt = None,
+    kind: KindOpt = None,
+    idle_min: IdleMinOpt = 0,
+) -> None:
+    """Sessions grouped by agent, with subagents nested under the session that spawned them (titles shown)."""
+    with _openclaw_errors():
+        everything = sess.list_sessions()
+    picked = _pick(everything, all_, agent, kind, idle_min)
+    out.print(ui.sessions_tree(sess.build_tree(picked, everything)))
+    out.print(f"\n[dim]{len(picked)} session(s); dim rows are parents shown for context.[/]")
 
 
 def _archive(items: list[sess.Session], yes: bool, dry_run: bool) -> None:
     if not items:
         out.print("[dim]Nothing to archive.[/]")
         return
-    out.print(ui.sessions_table(items))
+    out.print(ui.sessions_table(items, titles=True))
     if not dry_run and not yes and not typer.confirm(f"\nArchive {len(items)} session(s)?", default=False):
         raise typer.Exit(1)
     with _openclaw_errors():

@@ -99,3 +99,57 @@ def test_sparkline_keeps_a_spike_when_downsampling() -> None:
     assert "█" in line
     assert hist.sparkline([]) == ""
     assert set(hist.sparkline([5, 5, 5])) == {"▁"}  # flat series must not divide by zero
+
+
+def _s(
+    key: str, parent: str | None = None, status: str = "open", label: str | None = None, idle: float = 60
+) -> sess.Session:
+    return sess.Session(
+        key, key.split(":")[1], "subagent" if "subagent" in key else "main", status, idle, 0, label, parent
+    )
+
+
+def test_parse_reads_title_and_parent_from_gateway_json() -> None:
+    raw = json.dumps(
+        {
+            "sessions": [
+                {
+                    "key": "agent:forge:subagent:x",
+                    "label": "Worktree removal proposal",
+                    "parentSessionKey": "agent:forge:main",
+                    "spawnDepth": 1,
+                },
+                {"key": "agent:forge:subagent:y", "spawnedBy": "agent:forge:main"},
+                {"key": "agent:forge:main"},
+            ]
+        }
+    )
+    x, y, main = sess.parse_sessions(raw)
+    assert (x.label, x.parent, x.depth) == ("Worktree removal proposal", "agent:forge:main", 1)
+    assert y.parent == "agent:forge:main" and y.label is None  # falls back to spawnedBy
+    assert main.parent is None
+
+
+def test_tree_nests_open_subagent_under_a_finished_parent_marked_as_context() -> None:
+    parent = _s("agent:forge:main", status="done")
+    kid = _s("agent:forge:subagent:a", parent=parent.key, label="rig survey")
+    grandkid = _s("agent:forge:subagent:b", parent=kid.key)
+    other = _s("agent:maya:main")
+    everything = [parent, kid, grandkid, other]
+    roots = sess.build_tree(sess.select(everything), everything)
+    assert [r.session.key for r in roots] == [parent.key, other.key]
+    root = roots[0]
+    assert root.selected is False  # shown only for context: it is finished
+    assert [c.session.key for c in root.children] == [kid.key]
+    assert [c.session.key for c in root.children[0].children] == [grandkid.key]
+    assert root.children[0].selected and root.children[0].children[0].selected
+
+
+def test_tree_survives_dangling_parent_and_cycles() -> None:
+    lost = _s("agent:forge:subagent:lost", parent="agent:forge:subagent:gone")
+    a = _s("agent:atlas:subagent:a", parent="agent:atlas:subagent:b")
+    b = _s("agent:atlas:subagent:b", parent="agent:atlas:subagent:a")
+    everything = [lost, a, b]
+    roots = sess.build_tree(everything, everything)
+    assert lost.key in {r.session.key for r in roots}  # dangling parent: becomes its own root
+    assert roots  # a/b cycle must terminate

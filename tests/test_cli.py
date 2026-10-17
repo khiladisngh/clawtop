@@ -121,3 +121,14 @@ def test_status_when_gateway_is_down_still_lists_leftover_orphans(monkeypatch: p
     monkeypatch.setattr(cli, "take_snapshot", lambda: snap)
     r = runner.invoke(cli.app, [])
     assert "NOT RUNNING" in r.output and "ORPHAN" in r.output
+
+
+def test_sessions_tree_and_titles_show_the_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    parent = sess.Session("agent:forge:main", "forge", "main", "open", 10, 0)
+    kid = sess.Session("agent:forge:subagent:a", "forge", "subagent", "open", 5, 0, "rig survey", parent.key)
+    monkeypatch.setattr(cli.sess, "list_sessions", lambda: [parent, kid])
+    tree = runner.invoke(cli.app, ["sessions", "tree"])
+    assert tree.exit_code == 0
+    assert tree.output.index("main") < tree.output.index("rig survey")  # child listed under parent
+    assert "rig survey" not in runner.invoke(cli.app, ["sessions", "list"]).output
+    assert "rig survey" in runner.invoke(cli.app, ["sessions", "list", "--titles"]).output

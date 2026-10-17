@@ -6,7 +6,7 @@ import json
 import subprocess
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 TERMINAL = {"done", "failed", "killed", "timeout"}
 # Kinds that are safe to archive when idle. Channel/main sessions carry conversation context
@@ -40,6 +40,9 @@ class Session:
     status: str
     idle_s: float
     tokens: int
+    label: str | None = None  # the session title shown in OpenClaw, if it has one
+    parent: str | None = None  # key of the session that spawned this one
+    depth: int = 0
 
     @property
     def is_open(self) -> bool:
@@ -72,9 +75,56 @@ def parse_sessions(raw: str) -> list[Session]:
                 status=s.get("status") or "open",
                 idle_s=s.get("ageMs", 0) / 1000,
                 tokens=s.get("totalTokens") or 0,
+                label=s.get("label") or None,
+                parent=s.get("parentSessionKey") or s.get("spawnedBy") or None,
+                depth=s.get("spawnDepth") or 0,
             )
         )
     return out
+
+
+@dataclass
+class Node:
+    session: Session
+    selected: bool  # False for ancestors pulled in only to give context
+    children: list[Node] = field(default_factory=lambda: [])
+
+
+def build_tree(selected: Iterable[Session], everything: Iterable[Session]) -> list[Node]:
+    """Group ``selected`` sessions under the sessions that spawned them.
+
+    Ancestors that were not selected (e.g. a finished parent) are included, marked
+    ``selected=False``, so a subagent always appears under its parent. Roots come back
+    sorted by agent, then longest idle first.
+    """
+    by_key = {s.key: s for s in everything}
+    chosen = {s.key for s in selected}
+    nodes: dict[str, Node] = {}
+
+    def node(key: str) -> Node:
+        if key not in nodes:
+            nodes[key] = Node(by_key[key], key in chosen)
+        return nodes[key]
+
+    roots: dict[str, Node] = {}
+    for key in chosen:
+        if key not in by_key:
+            continue
+        cur, seen = key, {key}
+        while True:
+            n = node(cur)
+            parent = by_key[cur].parent
+            if parent is None or parent not in by_key or parent in seen:  # root, dangling, or a cycle
+                roots[cur] = n
+                break
+            p = node(parent)
+            if n not in p.children:
+                p.children.append(n)
+            seen.add(parent)
+            cur = parent
+    for n in nodes.values():
+        n.children.sort(key=lambda c: -c.session.idle_s)
+    return sorted(roots.values(), key=lambda n: (n.session.agent, -n.session.idle_s))
 
 
 def list_sessions(run: Runner = run_openclaw) -> list[Session]:
