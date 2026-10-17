@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/khiladisngh/clawtop/actions/workflows/ci.yml/badge.svg)](https://github.com/khiladisngh/clawtop/actions/workflows/ci.yml)
 [![docs](https://github.com/khiladisngh/clawtop/actions/workflows/docs.yml/badge.svg)](https://khiladisngh.github.io/clawtop/)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khiladisngh/clawtop/blob/main/LICENSE)
 ![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 
 **htop for [OpenClaw](https://openclaw.ai).** See where your gateway's memory goes, per agent run; stop
@@ -111,7 +111,7 @@ uv run zensical serve     # docs at http://localhost:8000
 ```
 
 The `/proc` parser tests build a fake `/proc` tree and need Linux; they are skipped on Windows and run in
-CI. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI. See [CONTRIBUTING.md](https://github.com/khiladisngh/clawtop/blob/main/CONTRIBUTING.md).
 
 ## License
 

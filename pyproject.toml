@@ -1,6 +1,6 @@
 [project]
 name = "clawtop"
-version = "0.2.3"
+version = "0.3.0"
 description = "htop for OpenClaw: see gateway memory per agent run, kill runaway runs, and manage open sessions."
 readme = "README.md"
 license = "MIT"

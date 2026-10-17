@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
+- Dark mode in the docs (follows the OS; header button switches system / light / dark).
+- PyPI release workflow (`release.yml`, trusted publishing): push a `vX.Y.Z` tag to publish.
+- README links are absolute so the PyPI page renders correctly.
 - Documentation site (Zensical, GitHub Pages) with a walkthrough video and a 30-second animated preview in the README.
 - `scripts/demo.py` patches prompts at `typer.prompt`/`typer.confirm` instead of Typer internals.
 
