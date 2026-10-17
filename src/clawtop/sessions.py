@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 
-TERMINAL = {"done", "failed", "killed", "timeout"}
+TERMINAL = {"done", "failed", "killed", "timeout", "archived"}
 # Kinds that are safe to archive when idle. Channel/main sessions carry conversation context
 # you probably want to keep, so they are never selected unless asked for explicitly.
 DEFAULT_PRUNE_KINDS = ("subagent",)
@@ -127,8 +129,33 @@ def build_tree(selected: Iterable[Session], everything: Iterable[Session]) -> li
     return sorted(roots.values(), key=lambda n: (n.session.agent, -n.session.idle_s))
 
 
-def list_sessions(run: Runner = run_openclaw) -> list[Session]:
-    return parse_sessions(run(["sessions", "--all-agents", "--limit", "all", "--json"]))
+def archived_keys(agents_dir: Path | None = None) -> set[str]:
+    """Keys of archived sessions, read (read-only) from each agent's database.
+
+    ``openclaw sessions --json`` does not say whether a session is archived: an archived
+    session keeps its old status (blank = "open"). The flag lives in ``session_nodes.archived_at``.
+    That schema is internal to OpenClaw, so any failure just yields no archived keys.
+    """
+    root = agents_dir or Path.home() / ".openclaw" / "agents"
+    keys: set[str] = set()
+    for db in root.glob("*/agent/openclaw-agent.sqlite"):
+        try:
+            con = sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True, timeout=2)
+            try:
+                keys.update(
+                    r[0] for r in con.execute("SELECT session_key FROM session_nodes WHERE archived_at IS NOT NULL")
+                )
+            finally:
+                con.close()
+        except sqlite3.Error:
+            continue
+    return keys
+
+
+def list_sessions(run: Runner = run_openclaw, agents_dir: Path | None = None) -> list[Session]:
+    rows = parse_sessions(run(["sessions", "--all-agents", "--limit", "all", "--json"]))
+    archived = archived_keys(agents_dir)
+    return [replace(s, status="archived") if s.key in archived and s.is_open else s for s in rows]
 
 
 def select(

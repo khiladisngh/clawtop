@@ -153,3 +153,27 @@ def test_tree_survives_dangling_parent_and_cycles() -> None:
     roots = sess.build_tree(everything, everything)
     assert lost.key in {r.session.key for r in roots}  # dangling parent: becomes its own root
     assert roots  # a/b cycle must terminate
+
+
+def test_archived_sessions_are_not_open_even_though_the_gateway_json_gives_them_no_status(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "forge" / "agent" / "openclaw-agent.sqlite"
+    db.parent.mkdir(parents=True)
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE session_nodes (session_key TEXT PRIMARY KEY, archived_at INTEGER)")
+    con.executemany(
+        "INSERT INTO session_nodes VALUES (?, ?)",
+        [("agent:forge:subagent:old", 1792162140061), ("agent:forge:subagent:live", None)],
+    )
+    con.commit()
+    con.close()
+    (tmp_path / "broken" / "agent").mkdir(parents=True)
+    (tmp_path / "broken" / "agent" / "openclaw-agent.sqlite").write_bytes(b"not a database")  # must not abort
+
+    raw = json.dumps({"sessions": [{"key": "agent:forge:subagent:old"}, {"key": "agent:forge:subagent:live"}]})
+    rows = {s.key: s for s in sess.list_sessions(run=lambda _a: raw, agents_dir=tmp_path)}
+    assert not rows["agent:forge:subagent:old"].is_open and rows["agent:forge:subagent:old"].status == "archived"
+    assert rows["agent:forge:subagent:live"].is_open
+    assert [s.key for s in sess.select(rows.values(), kinds=sess.DEFAULT_PRUNE_KINDS)] == ["agent:forge:subagent:live"]
+    assert sess.archived_keys(tmp_path / "missing") == set()

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fix: archived sessions were listed as open (the gateway JSON has no archived flag); the flag is now read read-only from the agent database, so `prune` no longer re-archives them.
+
 ## 0.2.0
 
 - `sessions tree`: sessions grouped by agent with subagents nested under the session that spawned them; finished parents are shown dimmed for context.
