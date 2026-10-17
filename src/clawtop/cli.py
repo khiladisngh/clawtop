@@ -297,11 +297,20 @@ def sessions_tree(
     agent: AgentOpt = None,
     kind: KindOpt = None,
     idle_min: IdleMinOpt = 0,
+    within: Annotated[
+        float, typer.Option("--within", help="Also show finished sessions active in the last N hours (0 = open only).")
+    ] = 6,
 ) -> None:
-    """Sessions grouped by agent, with subagents nested under the session that spawned them (titles shown)."""
+    """Sessions grouped by agent, with subagents nested under the session that spawned them (titles shown).
+
+    Subagents finish within minutes, so finished ones from the last few hours are included by default.
+    """
     with _openclaw_errors():
         everything = sess.list_sessions()
-    picked = _pick(everything, all_, agent, kind, idle_min)
+    if all_:
+        picked = _pick(everything, True, agent, kind, idle_min)
+    else:
+        picked = sess.select(everything, idle_s=idle_min * 60, kinds=kind, agents=agent, recent_s=within * 3600)
     out.print(ui.sessions_tree(sess.build_tree(picked, everything)))
     out.print(f"\n[dim]{len(picked)} session(s); dim rows are parents shown for context.[/]")
 

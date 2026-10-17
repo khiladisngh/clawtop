@@ -24,7 +24,13 @@ class OpenClawError(RuntimeError):
 
 def run_openclaw(args: list[str], timeout: float = 120) -> str:
     try:
-        r = subprocess.run(["openclaw", *args], capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(
+            ["openclaw", *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=Path.home(),  # openclaw's runtime guard crashes if the caller's cwd was deleted
+        )
     except FileNotFoundError as e:
         raise OpenClawError("`openclaw` not found on PATH") from e
     except subprocess.TimeoutExpired as e:
@@ -120,7 +126,7 @@ def build_tree(selected: Iterable[Session], everything: Iterable[Session]) -> li
                 roots[cur] = n
                 break
             p = node(parent)
-            if n not in p.children:
+            if not any(c is n for c in p.children):
                 p.children.append(n)
             seen.add(parent)
             cur = parent
@@ -164,14 +170,19 @@ def select(
     idle_s: float = 0,
     kinds: Iterable[str] | None = None,
     agents: Iterable[str] | None = None,
+    recent_s: float = 0,
 ) -> list[Session]:
-    """Open sessions idle for at least ``idle_s``, optionally limited to kinds/agents."""
+    """Open sessions idle for at least ``idle_s``, optionally limited to kinds/agents.
+
+    ``recent_s`` also includes closed sessions active within that many seconds (used by the tree,
+    because subagents finish within minutes and would otherwise never be visible).
+    """
     kinds_, agents_ = set(kinds or ()), set(agents or ())
     return sorted(
         (
             s
             for s in sessions
-            if s.is_open
+            if (s.is_open or s.idle_s < recent_s)
             and s.idle_s >= idle_s
             and (not kinds_ or s.kind in kinds_)
             and (not agents_ or s.agent in agents_)

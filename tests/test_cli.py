@@ -132,3 +132,17 @@ def test_sessions_tree_and_titles_show_the_label(monkeypatch: pytest.MonkeyPatch
     assert tree.output.index("main") < tree.output.index("rig survey")  # child listed under parent
     assert "rig survey" not in runner.invoke(cli.app, ["sessions", "list"]).output
     assert "rig survey" in runner.invoke(cli.app, ["sessions", "list", "--titles"]).output
+
+
+def test_tree_shows_recently_finished_subagents_under_their_parent_but_not_old_ones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    main = sess.Session("agent:forge:main", "forge", "main", "open", 30, 0)
+    fresh = sess.Session("agent:forge:subagent:a", "forge", "subagent", "done", 600, 0, "fresh job", main.key)
+    old = sess.Session("agent:forge:subagent:b", "forge", "subagent", "done", 3 * 86400, 0, "ancient job", main.key)
+    monkeypatch.setattr(cli.sess, "list_sessions", lambda: [main, fresh, old])
+    r = runner.invoke(cli.app, ["sessions", "tree"])
+    assert "fresh job" in r.output and "ancient job" not in r.output
+    assert r.output.index("main") < r.output.index("fresh job")
+    assert "fresh job" not in runner.invoke(cli.app, ["sessions", "tree", "--within", "0"]).output
+    assert "ancient job" in runner.invoke(cli.app, ["sessions", "tree", "--all"]).output

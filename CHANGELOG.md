@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- `sessions tree` now includes sessions that finished in the last 6h (`--within N`, 0 = open only), so subagents show under their parent instead of vanishing minutes after they end.
+- `openclaw` is run from the home directory, so clawtop works even when your shell is in a deleted directory.
+
 ## 0.2.1
 
 - Fix: archived sessions were listed as open (the gateway JSON has no archived flag); the flag is now read read-only from the agent database, so `prune` no longer re-archives them.
