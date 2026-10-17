@@ -2,6 +2,21 @@
 
 ## 0.3.0
 
+- **Runtime-independent.** Run stacks are no longer found by looking for `claude`. A run is the top
+  process in the gateway's tree that is not OpenClaw's own code and works in an agent workspace (read from
+  the OpenClaw config); it is labelled by its executable. Works for any CLI backend or ACP harness that
+  runs as a process. Verified on Claude CLI only.
+- New `RUNTIME` column in `status`, `watch` and `kill`; `sessions list` shows OpenClaw's runtime id.
+- Idle time is `-` for runtimes with no activity source (only Claude Code's transcript is supported); it
+  is never guessed from age. `STALE` and `kill --idle` only use known idle times, and `kill --idle` says
+  how many runs it skipped.
+- Helper processes are named by what they run (`docs-mcp`, `search-mcp`), not by a fixed list.
+- A hand-started CLI is recognised as not gateway-owned by its environment (OpenClaw's gateway markers),
+  not by its name.
+- Honours `OPENCLAW_STATE_DIR` / `OPENCLAW_CONFIG_PATH`; new `CLAWTOP_UNIT` and `CLAWTOP_WORKSPACES`.
+- The Windows launcher uses your default WSL distro and user unless `CLAWTOP_WSL_DISTRO` /
+  `CLAWTOP_WSL_USER` are set (the old defaults were specific to one machine).
+- Status says when the runtime runs inside the gateway (no per-run process) or no workspaces were found.
 - Dark mode in the docs (follows the OS; header button switches system / light / dark).
 - PyPI release workflow (`release.yml`, trusted publishing): push a `vX.Y.Z` tag to publish.
 - Fix: docs admonitions (`!!! note`) rendered as literal text because the markdown extension list replaced Zensical's defaults; CI now fails if that happens.

@@ -56,14 +56,25 @@ def _table(*cols: str, right: frozenset[str] = frozenset(), numbered: bool = Fal
     return t
 
 
+def _parts(parts: Sequence[str], each: int = 11) -> str:
+    short = [p if len(p) <= each else p[: each - 1] + "\u2026" for p in parts]
+    return ",".join(short) or "-"
+
+
+def _no_stacks(snap: Snapshot) -> str:
+    if not snap.workspaces_known:
+        return "  none found: no agent workspaces in the OpenClaw config (set CLAWTOP_WORKSPACES)"
+    return "  none. Runtimes that run inside the gateway (openclaw, codex, ...) have no process of their own."
+
+
 def stacks_table(stacks: Sequence[Stack], stale_min: float = STALE_IDLE_MIN, numbered: bool = False) -> Table:
     t = _table(
-        "PID", "AGENT", "SESSION", "IDLE", "AGE", "CTX", "MEM", "PARTS", "",
+        "PID", "RUNTIME", "AGENT", "IDLE", "AGE", "CTX", "MEM", "PARTS", "",
         right=frozenset({"PID", "IDLE", "AGE", "CTX", "MEM"}),
         numbered=numbered,
     )  # fmt: skip
     for i, s in enumerate(stacks, 1):
-        stale = s.idle_s > stale_min * 60
+        stale = s.is_idle_over(stale_min)
         flag = (
             Text("ORPHAN", style="bold magenta")
             if s.kind == "orphan"
@@ -74,13 +85,13 @@ def stacks_table(stacks: Sequence[Stack], stale_min: float = STALE_IDLE_MIN, num
         mem_style = "bold red" if s.mb > 700 else "yellow" if s.mb > 400 else "green"
         cells: list[RenderableType] = [
             str(s.pid),
+            s.runtime,
             s.agent,
-            s.session_id[:8] or "-",
-            Text(dur(s.idle_s), style="red" if stale else ""),
+            Text(dur(s.idle_s) if s.idle_s is not None else "-", style="red" if stale else ""),
             dur(s.age_s),
             f"{s.transcript.size_mb:.1f}M" if s.transcript else "-",
             Text(gib(s.mb), style=mem_style),
-            ",".join(s.parts) or "-",
+            _parts(s.parts),
             flag,
         ]
         t.add_row(*([str(i)] if numbered else []), *cells)
@@ -112,14 +123,14 @@ def status(snap: Snapshot, stale_min: float = STALE_IDLE_MIN) -> RenderableType:
         )
         notes.append(f"gateway: page cache {gib(snap.cg_cache_mb)} (reclaimable){cap}")
 
-    stale = sum(1 for s in snap.stacks if s.idle_s > stale_min * 60)
+    stale = sum(1 for s in snap.stacks if s.is_idle_over(stale_min))
     hint = "clawtop kill" + (f"   [{stale} stale: clawtop kill --idle {stale_min:g}]" if stale else "")
     body: list[RenderableType] = [
         g,
         *(Text(n, style="dim") for n in notes),
         Text(),
         Text(f"Agent run stacks ({len(snap.stacks)})", style="bold"),
-        stacks_table(snap.stacks, stale_min) if snap.stacks else Text("  none", style="dim"),
+        stacks_table(snap.stacks, stale_min) if snap.stacks else Text(_no_stacks(snap), style="dim"),
         Text(),
         Text(hint, style="dim"),
     ]
@@ -130,6 +141,7 @@ def sessions_table(sessions: Sequence[Session], numbered: bool = False, titles: 
     t = _table(
         "AGENT",
         "KIND",
+        "RUNTIME",
         "STATUS",
         "IDLE",
         "TOKENS",
@@ -142,6 +154,7 @@ def sessions_table(sessions: Sequence[Session], numbered: bool = False, titles: 
         cells: list[RenderableType] = [
             s.agent,
             s.kind,
+            Text(s.runtime or "-", style="" if s.runtime else "dim"),
             Text(s.status, style="green" if s.is_open else "dim"),
             dur(s.idle_s),
             f"{s.tokens:,}" if s.tokens else "-",

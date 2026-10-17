@@ -9,6 +9,9 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import cast
+
+from clawtop.procs import state_dir
 
 TERMINAL = {"done", "failed", "killed", "timeout", "archived"}
 # Kinds that are safe to archive when idle. Channel/main sessions carry conversation context
@@ -51,6 +54,7 @@ class Session:
     label: str | None = None  # the session title shown in OpenClaw, if it has one
     parent: str | None = None  # key of the session that spawned this one
     depth: int = 0
+    runtime: str | None = None  # OpenClaw's agent runtime id, e.g. claude-cli, codex, openclaw
 
     @property
     def is_open(self) -> bool:
@@ -70,6 +74,14 @@ def from_key(key: str) -> Session:
     return Session(key, key.split(":")[1], _kind(key), "open", 0.0, 0)
 
 
+def _runtime_id(value: object) -> str | None:
+    """OpenClaw's ``agentRuntime`` is ``{"id": "claude-cli", "source": ...}`` (the id may be absent)."""
+    if isinstance(value, dict):
+        rid = cast("dict[str, object]", value).get("id")
+        return rid if isinstance(rid, str) else None
+    return None
+
+
 def parse_sessions(raw: str) -> list[Session]:
     data = json.loads(raw)
     out: list[Session] = []
@@ -86,6 +98,7 @@ def parse_sessions(raw: str) -> list[Session]:
                 label=s.get("label") or None,
                 parent=s.get("parentSessionKey") or s.get("spawnedBy") or None,
                 depth=s.get("spawnDepth") or 0,
+                runtime=_runtime_id(s.get("agentRuntime")),
             )
         )
     return out
@@ -142,7 +155,7 @@ def archived_keys(agents_dir: Path | None = None) -> set[str]:
     session keeps its old status (blank = "open"). The flag lives in ``session_nodes.archived_at``.
     That schema is internal to OpenClaw, so any failure just yields no archived keys.
     """
-    root = agents_dir or Path.home() / ".openclaw" / "agents"
+    root = agents_dir or state_dir() / "agents"
     keys: set[str] = set()
     for db in root.glob("*/agent/openclaw-agent.sqlite"):
         try:

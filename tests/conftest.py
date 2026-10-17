@@ -25,6 +25,7 @@ def make_proc(
     start_ticks: int = 0,
     comm: str = "node",
     state: str = "S",
+    environ: str = "",
 ) -> None:
     """Write a minimal /proc/<pid> entry that read_procs() can parse."""
     d = root / str(pid)
@@ -35,17 +36,28 @@ def make_proc(
     (d / "smaps_rollup").write_text(f"Rss: {pss_kb} kB\nPss: {pss_kb} kB\n")
     if cwd:
         os.symlink(cwd, d / "cwd")
+    if environ:
+        (d / "environ").write_bytes(environ.replace(" ", "\0").encode() + b"\0")
 
 
 def proc(pid: int, ppid: int, cmd: str, cwd: str = "", mb: float = 100, age_s: float = 60) -> Proc:
     return Proc(pid=pid, ppid=ppid, age_s=age_s, cmd=cmd, cwd=cwd, mb=mb)
 
 
-def stack(pid: int, *, mb: float = 500, age_s: float = 60, idle_s: float | None = None, kind: str = "run") -> Stack:
+def stack(
+    pid: int,
+    *,
+    mb: float = 500,
+    age_s: float = 60,
+    idle_s: float | None = None,
+    kind: str = "run",
+    cmd: str | None = None,
+    agent: str = "builder",
+) -> Stack:
     from clawtop.procs import Transcript
 
-    leader = proc(pid, 1, f"claude --session-id {UUID_A}", "/opt/openclaw/workspaces/forge", mb, age_s)
-    s = Stack(kind=kind, leader=leader, procs=[leader])
+    leader = proc(pid, 1, cmd or f"claude --session-id {UUID_A}", f"/srv/ws/{agent}", mb, age_s)
+    s = Stack(kind=kind, leader=leader, procs=[leader], agent=agent)
     if idle_s is not None:
         s.transcript = Transcript(size_mb=1.0, idle_s=idle_s)
     return s

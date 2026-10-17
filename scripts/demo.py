@@ -28,24 +28,29 @@ NOW = time.time()
 UUID = "{:08x}-1111-4222-8333-{:012x}"
 
 
-def _stack(pid: int, agent: str, mb: float, idle_s: float, age_s: float, ctx_mb: float, n: int) -> Stack:
+def _stack(
+    pid: int, agent: str, mb: float, idle_s: float | None, age_s: float, ctx_mb: float, n: int, runtime: str = "claude"
+) -> Stack:
     cwd = f"/opt/openclaw/workspaces/{agent}"
     sid = UUID.format(n * 0x1111111, n * 0x10101)
-    leader = Proc(pid, 1, age_s, f"/home/user/.local/bin/claude --session-id {sid}", cwd, mb * 0.42)
+    leader = Proc(pid, 1, age_s, f"/home/user/.local/bin/{runtime} --session-id {sid}", cwd, mb * 0.50)
     kids = [
-        Proc(pid + 1, pid, age_s, "node /usr/lib/bin/rea mcp", cwd, mb * 0.35),
-        Proc(pid + 2, pid, age_s, "npm exec @notionhq/notion-mcp-server", cwd, mb * 0.10),
-        Proc(pid + 3, pid + 2, age_s, "node .bin/notion-mcp-server", cwd, mb * 0.13),
+        Proc(pid + 1, pid, age_s, "node /usr/lib/mcp/bin/docs-mcp serve", cwd, mb * 0.30),
+        Proc(pid + 2, pid, age_s, "npm exec @acme/search-mcp", cwd, mb * 0.08),
+        Proc(pid + 3, pid + 2, age_s, "node .bin/search-mcp", cwd, mb * 0.12),
     ]
-    return Stack("run", leader, [leader, *kids], Transcript(ctx_mb, idle_s))
+    # Idle time comes from a transcript, which only some runtimes have: None means "unknown".
+    transcript = Transcript(ctx_mb, idle_s) if idle_s is not None else None
+    return Stack("run", leader, [leader, *kids], agent, transcript)
 
 
 def snapshot() -> Snapshot:
     stacks = [
         _stack(4102, "builder", 734, 95, 640, 2.1, 1),
-        _stack(3877, "researcher", 612, 8 * 60, 1500, 0.9, 2),
-        _stack(2950, "writer", 530, 54 * 60, 3500, 0.4, 3),
+        _stack(3877, "researcher", 612, 54 * 60, 3500, 0.4, 2),
+        _stack(2950, "writer", 566, None, 3500, 0, 3, runtime="gemini"),
         _stack(2211, "builder", 498, 2 * 3600 + 600, 9000, 1.6, 4),
+        _stack(1760, "researcher", 455, None, 3 * 3600, 0, 5, runtime="opencode"),
     ]
     return Snapshot(
         ts=int(NOW), main_pid=999, main_mb=2350, main_age_s=5 * 3600, cg_mb=8200, cg_cache_mb=2900,
@@ -55,19 +60,27 @@ def snapshot() -> Snapshot:
 
 
 def _session(
-    agent: str, kind: str, status: str, idle_s: float, tokens: int, label: str | None, n: int, parent: str | None
+    agent: str,
+    kind: str,
+    status: str,
+    idle_s: float,
+    tokens: int,
+    label: str | None,
+    n: int,
+    parent: str | None,
+    runtime: str = "claude-cli",
 ):
     tail = {"main": "main", "cron": f"cron:{n:04x}", "subagent": f"subagent:{UUID.format(n * 0x3A3A3A3, n * 0x777)}"}[
         kind
     ]
-    return sess.Session(f"agent:{agent}:{tail}", agent, kind, status, idle_s, tokens, label, parent)
+    return sess.Session(f"agent:{agent}:{tail}", agent, kind, status, idle_s, tokens, label, parent, runtime=runtime)
 
 
 def sessions() -> list[sess.Session]:
     out = [
         _session("builder", "main", "open", 20, 188_000, None, 1, None),
         _session("researcher", "main", "open", 600, 96_000, None, 2, None),
-        _session("writer", "main", "open", 3 * 3600, 71_000, None, 3, None),
+        _session("writer", "main", "open", 3 * 3600, 71_000, None, 3, None, "openclaw"),
     ]
     bm = "agent:builder:main"
     for n, (status, idle, label) in enumerate(
@@ -97,7 +110,7 @@ def sessions() -> list[sess.Session]:
             "researcher", "subagent", "open", 15 * 3600, 0, "Collect benchmark datasets", 10, "agent:researcher:main"
         )
     )
-    out.append(_session("writer", "cron", "open", 7 * 3600, 64_000, "Automation: daily-digest", 11, None))
+    out.append(_session("writer", "cron", "open", 7 * 3600, 64_000, "Automation: daily-digest", 11, None, "gemini-cli"))
     return out
 
 

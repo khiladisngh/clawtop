@@ -23,14 +23,16 @@ the runaway ones safely; keep your sessions tidy.
 
 ## Why
 
-Every OpenClaw agent run backed by the `claude` CLI starts a private process stack: `claude` plus its MCP
-servers (`rea mcp`, `npx @notionhq/notion-mcp-server`, ...). Each stack is roughly 0.5 to 0.7 GB. A burst
-of runs, or a few that hang on a tool call, can push the gateway past the VM's RAM; the event loop then
-stalls in swap and restarts fail. clawtop makes that visible and fixable in one command.
+Many OpenClaw runtimes (CLI backends such as Claude CLI or Gemini CLI, and ACP harnesses) start a
+separate process for every agent run, plus the MCP servers and helpers that run uses. In the author's
+setup each such stack is roughly 0.5 to 0.7 GB. A burst of runs, or a few that hang on a tool call, can
+push the gateway past the VM's RAM; the event loop then stalls in swap and restarts fail. clawtop makes
+that visible and fixable in one command. It is not tied to one runtime: runs are recognised by structure,
+not by program name.
 
 - **Memory per run**, measured so the numbers add up to the gateway's cgroup total.
-- **Real idleness**, taken from each run's own transcript, so a busy long-lived run is not flagged and a
-  stuck one is.
+- **Real idleness** where the runtime exposes it (Claude Code's transcript today), so a busy long-lived
+  run is not flagged and a stuck one is. Where it doesn't, idle time is shown as `-`, never guessed.
 - **Safe kills.** Only processes the gateway spawned can be selected, whole stacks die together (SIGTERM,
   then SIGKILL), and PID reuse is guarded.
 - **Sessions** through the supported `openclaw sessions` CLI: list, tree (subagents under their parent,
@@ -49,7 +51,7 @@ clawtop sampler install     # optional: per-minute memory history via a systemd 
 ```
 
 On a Windows host, install it there too; every command is forwarded into WSL
-(`CLAWTOP_WSL_DISTRO`, default `OpenClawGateway`; `CLAWTOP_WSL_USER`, default `openclaw`).
+(your default WSL distro and user; override with `CLAWTOP_WSL_DISTRO` and `CLAWTOP_WSL_USER`).
 See [Install](https://khiladisngh.github.io/clawtop/getting-started/install/).
 
 ## Usage
@@ -94,11 +96,14 @@ clawtop shows problems; systemd limits and a concurrency cap stop them taking th
 
 - Linux only (reads `/proc` and cgroup v2); on Windows it needs WSL.
 - It looks for the systemd **user** unit `openclaw-gateway`.
+- **Runtimes that run inside the gateway** (`openclaw`, `codex`, `copilot`, `muse`) have no process per
+  run, so there is no stack to list; their memory is part of the gateway's "main".
+- **Verified on Claude CLI only.** Other process-per-run runtimes (Gemini CLI, ACP harnesses) are
+  recognised by the same structural rules, but I have not seen them on a real gateway. Please report
+  what you see. See [Concepts](https://khiladisngh.github.io/clawtop/concepts/).
 - A run stack cannot be mapped to an OpenClaw session key (the gateway does not expose it), so clawtop
-  shows the agent and the CLI session id instead of guessing. See
-  [Concepts](https://khiladisngh.github.io/clawtop/concepts/).
-- Processes are recognised by signature (workspaces under `/opt/openclaw/workspaces/`, or the gateway's
-  temporary MCP config); other agent backends show up only as gateway "other".
+  shows the runtime and agent instead of guessing.
+- Runs are found by agent workspace (from your OpenClaw config), so the config must declare them.
 
 ## Development
 

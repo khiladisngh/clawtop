@@ -9,18 +9,19 @@ stop the runaway ones safely; keep your sessions tidy.
 
 ## The problem
 
-Every OpenClaw agent run that uses the `claude` CLI starts its own process stack: `claude` plus its MCP
-servers (`rea mcp`, `npx @notionhq/notion-mcp-server`, and so on). Each stack is roughly 0.5 to 0.7 GB.
-A burst of runs, or a few that hang on a tool call, can push the gateway past the VM's RAM. The event
-loop then stalls in swap and restarts fail.
+Many OpenClaw runtimes (CLI backends such as Claude CLI or Gemini CLI, and ACP harnesses) start a
+separate process for every agent run, plus the MCP servers and helpers that run uses. In the author's
+setup each such stack is roughly 0.5 to 0.7 GB. A burst of runs, or a few that hang on a tool call,
+can push the gateway past the VM's RAM. The event loop then stalls in swap and restarts fail.
 
 clawtop makes that visible and fixable in one command.
 
 ## What you get
 
 - **Memory per run**, measured so the numbers add up to the gateway's cgroup total.
-- **Real idleness**, taken from each run's own transcript, so a busy long-lived run is not flagged and a
-  stuck one is.
+- **Real idleness** where the runtime exposes it (Claude Code's transcript today), so a busy long-lived
+  run is not flagged and a stuck one is. Never guessed from age.
+- **Any runtime that runs as a process**: runs are recognised by structure, not by program name.
 - **Safe kills** of whole stacks. Only processes the gateway spawned can be selected.
 - **Sessions** listed, shown as a tree with subagents under their parent, and archived or pruned.
 - **History**: a per-minute sampler and a sparkline of what a memory spike looked like.

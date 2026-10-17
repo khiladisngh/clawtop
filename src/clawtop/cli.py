@@ -116,13 +116,21 @@ def _targets(
         if pid not in by_pid:
             raise ValueError(f"{pid} is not an agent run-stack leader (see `clawtop status`)")
         picked[pid] = by_pid[pid]
+    unknown = 0
     for s in snap.stacks:
+        if idle is not None and s.idle_s is None:
+            unknown += 1
         if (
-            (idle is not None and s.idle_s > idle * 60)
+            (idle is not None and s.is_idle_over(idle))
             or (older_than is not None and s.age_s > older_than * 60)
             or (orphans and s.kind == "orphan")
         ):
             picked[s.pid] = s
+    if unknown:
+        err.print(
+            f"[dim]{unknown} run(s) skipped by --idle: this runtime has no activity source, so idle time is "
+            "unknown. Use --older-than or name the PID.[/]"
+        )
     return sorted(picked.values(), key=lambda s: -s.mb)
 
 
@@ -141,7 +149,7 @@ def _choose(items: list[Stack], stale_min: int) -> list[Stack]:
     if ans == "all":
         return items
     if ans == "stale":
-        return [s for s in items if s.kind == "orphan" or s.idle_s > stale_min * 60]
+        return [s for s in items if s.kind == "orphan" or s.is_idle_over(stale_min)]
     idx = [int(x) for x in re.split(r"[\s,]+", ans) if x]
     if any(not 1 <= i <= len(items) for i in idx):
         raise ValueError(f"pick numbers between 1 and {len(items)}")
@@ -166,9 +174,9 @@ def kill(
     grace: Annotated[float, typer.Option(help="Seconds between SIGTERM and SIGKILL.")] = 5.0,
     stale_min: StaleOpt = ui.STALE_IDLE_MIN,
 ) -> None:
-    """Kill whole run stacks (the claude process and its MCP children).
+    """Kill whole run stacks: an agent run process and everything it started (MCP servers, helpers).
 
-    Only processes the gateway spawned can be selected; your own claude/npx are never touched.
+    Only processes the gateway spawned can be selected; processes you started yourself are never touched.
     With no selector this opens an interactive picker.
     """
     snap = take_snapshot()
@@ -216,7 +224,7 @@ def history(
     last: Annotated[str, typer.Option("--last", "-l", help="Window: 90m, 6h, 2d.")] = "6h",
     log: Annotated[
         str | None,
-        typer.Option(help="Samples file (default $CLAWTOP_LOG or ~/.openclaw/logs/mem-samples.jsonl)."),
+        typer.Option(help="Samples file (default $CLAWTOP_LOG or <OpenClaw state dir>/logs/mem-samples.jsonl)."),
     ] = None,
 ) -> None:
     """Memory timeline from the sampler: sparkline, peak, and the stacks alive at the peak."""
@@ -333,7 +341,7 @@ def _archive(items: list[sess.Session], yes: bool, dry_run: bool) -> None:
 
 @sessions_app.command("archive")
 def sessions_archive(
-    keys: Annotated[list[str], typer.Argument(help="Session keys, e.g. agent:forge:subagent:<uuid>.")],
+    keys: Annotated[list[str], typer.Argument(help="Session keys, e.g. agent:<id>:subagent:<uuid>.")],
     yes: Annotated[bool, typer.Option("--yes", "-y")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
@@ -371,15 +379,16 @@ def sessions_prune(
 
 
 def _forward_to_wsl(argv: list[str]) -> int:
-    """On Windows the gateway lives in WSL: run the same command there, inheriting the console."""
-    distro = os.environ.get("CLAWTOP_WSL_DISTRO", "OpenClawGateway")
-    user = os.environ.get("CLAWTOP_WSL_USER", "openclaw")
+    """On Windows the gateway lives in WSL: run the same command there, inheriting the console.
+
+    Uses your default WSL distro and user unless CLAWTOP_WSL_DISTRO / CLAWTOP_WSL_USER are set.
+    """
+    distro = os.environ.get("CLAWTOP_WSL_DISTRO")
+    user = os.environ.get("CLAWTOP_WSL_USER")
     cmd = [
         "wsl.exe",
-        "-d",
-        distro,
-        "-u",
-        user,
+        *(["-d", distro] if distro else []),
+        *(["-u", user] if user else []),
         "-e",
         "bash",
         "-lc",

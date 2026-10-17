@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TypedDict, cast
 
-from clawtop.procs import Snapshot
+from clawtop.procs import Snapshot, state_dir
 
 MAX_BYTES = 20 * (1 << 20)
 _BARS = "▁▂▃▄▅▆▇█"
@@ -28,7 +28,9 @@ class Sample(TypedDict):
 
 
 def default_log() -> Path:
-    return Path(os.environ.get("CLAWTOP_LOG", "~/.openclaw/logs/mem-samples.jsonl")).expanduser()
+    if os.environ.get("CLAWTOP_LOG"):
+        return Path(os.environ["CLAWTOP_LOG"]).expanduser()
+    return state_dir() / "logs" / "mem-samples.jsonl"
 
 
 def append_sample(snap: Snapshot, path: Path) -> None:

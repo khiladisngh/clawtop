@@ -28,8 +28,8 @@ With no selector and a terminal, opens the interactive picker.
 | Option | Default | Meaning |
 |---|---|---|
 | `PID...` | | Run-stack leader PIDs from `status` |
-| `--idle MIN` | | Stacks with no transcript activity for MIN minutes |
-| `--older-than MIN` | | Stacks older than MIN minutes |
+| `--idle MIN` | | Stacks with no transcript activity for MIN minutes. Skips runs whose runtime has no activity source (`IDLE` is `-`) and says how many |
+| `--older-than MIN` | | Stacks older than MIN minutes (works for every runtime) |
 | `--orphans` | off | Gateway-signed stacks whose parent is gone |
 | `-y`, `--yes` | off | Skip confirmation |
 | `--dry-run` | off | Show the selection and stop |
@@ -55,6 +55,11 @@ not a stack leader, or if a process survived.
 | `--kind KIND` | Only this kind (repeatable): `subagent`, `cron`, `discord`, `main`, `node` |
 | `--idle-min MIN` | Only sessions idle at least this long |
 | `-t`, `--titles` | Add the title column |
+
+
+The table has a `RUNTIME` column with OpenClaw's runtime id for the session (`claude-cli`, `codex`,
+`openclaw`, ...), or `-` if OpenClaw does not report one. `--json` is not offered; use
+`openclaw sessions --json` for raw data.
 
 ## `clawtop sessions tree`
 

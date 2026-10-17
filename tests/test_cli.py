@@ -146,3 +146,37 @@ def test_tree_shows_recently_finished_subagents_under_their_parent_but_not_old_o
     assert r.output.index("main") < r.output.index("fresh job")
     assert "fresh job" not in runner.invoke(cli.app, ["sessions", "tree", "--within", "0"]).output
     assert "ancient job" in runner.invoke(cli.app, ["sessions", "tree", "--all"]).output
+
+
+def test_idle_selector_skips_runtimes_with_no_activity_source_and_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    claude = stack(200, mb=300, idle_s=3 * 3600)  # has a transcript: idle is known
+    gemini = stack(201, mb=700, cmd="gemini --yolo", age_s=5 * 3600)  # no activity source: idle unknown
+    monkeypatch.setattr(cli, "take_snapshot", lambda: snapshot([gemini, claude]))
+    killed: list[int] = []
+    monkeypatch.setattr(cli, "kill_stack", lambda s, **_: killed.append(s.pid) or [])
+
+    r = runner.invoke(cli.app, ["kill", "--idle", "30", "--yes"])
+    assert r.exit_code == 0 and killed == [200]  # never guessed from age
+    assert "1 run(s) skipped by --idle" in r.output
+
+    killed.clear()
+    assert runner.invoke(cli.app, ["kill", "--older-than", "120", "--yes"]).exit_code == 0
+    assert killed == [201]  # age works for every runtime
+
+
+def test_status_shows_each_runtime_and_a_dash_where_idle_is_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    snap = snapshot([stack(200, idle_s=60), stack(201, cmd="gemini --yolo")])
+    monkeypatch.setattr(cli, "take_snapshot", lambda: snap)
+    out = runner.invoke(cli.app, []).output
+    assert "claude" in out and "gemini" in out
+    assert "STALE" not in out  # an unknown idle time is not stale
+    data = json.loads(runner.invoke(cli.app, ["status", "--json"]).output)
+    assert {s["runtime"]: s["idle_s"] for s in data["stacks"]} == {"claude": 60, "gemini": None}
+
+
+def test_empty_status_explains_embedded_runtimes_and_missing_workspaces(monkeypatch: pytest.MonkeyPatch) -> None:
+    snap = snapshot([])
+    monkeypatch.setattr(cli, "take_snapshot", lambda: snap)
+    assert "run inside the gateway" in runner.invoke(cli.app, []).output
+    snap.workspaces_known = False
+    assert "CLAWTOP_WORKSPACES" in runner.invoke(cli.app, []).output

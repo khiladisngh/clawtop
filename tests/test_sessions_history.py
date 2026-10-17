@@ -119,7 +119,7 @@ def test_parse_reads_title_and_parent_from_gateway_json() -> None:
                     "parentSessionKey": "agent:forge:main",
                     "spawnDepth": 1,
                 },
-                {"key": "agent:forge:subagent:y", "spawnedBy": "agent:forge:main"},
+                {"key": "agent:forge:subagent:y", "spawnedBy": "agent:forge:main", "agentRuntime": {"id": "codex"}},
                 {"key": "agent:forge:main"},
             ]
         }
@@ -128,6 +128,7 @@ def test_parse_reads_title_and_parent_from_gateway_json() -> None:
     assert (x.label, x.parent, x.depth) == ("Worktree removal proposal", "agent:forge:main", 1)
     assert y.parent == "agent:forge:main" and y.label is None  # falls back to spawnedBy
     assert main.parent is None
+    assert (x.runtime, y.runtime, main.runtime) == (None, "codex", None)  # whatever OpenClaw reports; never assumed
 
 
 def test_tree_nests_open_subagent_under_a_finished_parent_marked_as_context() -> None:

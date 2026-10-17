@@ -33,7 +33,7 @@ then `systemctl --user daemon-reload` and restart the gateway.
 
 | Setting | Why |
 |---|---|
-| `KillMode=control-group` | A stop or restart kills every child. The default left `claude` and MCP processes alive after a failed shutdown, which starved the next start. |
+| `KillMode=control-group` | A stop or restart kills every child. The default left agent and MCP processes alive after a failed shutdown, which starved the next start. |
 | `MemoryHigh=11G` | Soft limit. Above it the gateway slows down while the kernel drops cache and moves idle memory to swap. Swap climbing means you are at this limit. |
 | `MemoryMax=13G` | Hard limit; the kernel kills a process in the cgroup above it. Leaves headroom for the rest of the VM. |
 | `MemorySwapMax=3G` | Caps how much swap the gateway can use. |

@@ -1,6 +1,7 @@
 # Stop runaway runs
 
-`clawtop kill` stops whole **run stacks**: the `claude` process and all its MCP helpers together.
+`clawtop kill` stops whole **run stacks**: an agent run's process and everything it started (MCP servers,
+helpers), together.
 
 ## Pick interactively
 
@@ -15,8 +16,8 @@ cancel. It then shows what will be killed and how much memory that frees, and as
 
 ```sh
 clawtop kill 4102 2211          # specific stacks, by the PID in the table
-clawtop kill --idle 30          # no transcript activity for 30 minutes
-clawtop kill --older-than 120   # runs older than 2 hours
+clawtop kill --idle 30          # no transcript activity for 30 minutes (runtimes with a transcript)
+clawtop kill --older-than 120   # runs older than 2 hours (any runtime)
 clawtop kill --orphans          # gateway-spawned stacks whose parent is gone
 ```
 
@@ -32,9 +33,10 @@ The exit code is non-zero if any process survived.
 
 ## What makes it safe
 
-- **Only gateway-spawned processes can be selected.** A process counts only if it runs in a gateway
-  workspace directory, or was started with the gateway's temporary MCP config. Your own `claude` or `npx`
-  sessions are never listed. See [what counts as a gateway run](../concepts.md#what-counts-as-a-gateway-run).
+- **Only gateway-spawned processes can be selected.** A process counts only if it is in the gateway's
+  process tree (or carries OpenClaw's gateway markers in its environment) and runs in an agent workspace.
+  A `claude`, `gemini` or `npx` you started from your own shell is never listed. See
+  [what counts as a gateway run](../concepts.md#what-counts-as-a-gateway-run).
 - **Whole stacks die together:** SIGTERM first, then SIGKILL for survivors. No half-dead MCP helpers are
   left holding memory.
 - **PID reuse is guarded.** The command line of every process is re-checked just before it is signalled.
@@ -47,5 +49,6 @@ itself. To close sessions afterwards, use [`sessions prune`](manage-sessions.md)
 
 !!! warning
     You cannot tell from the table which Discord channel or cron job a run belongs to. clawtop shows the
-    agent and the CLI session id. Use `IDLE` and `CTX` (transcript size) to decide. Runs that are working
-    right now show a small `IDLE`.
+    runtime and the agent. Use `IDLE` and `CTX` (transcript size) where they are available. Runs that are
+    working right now show a small `IDLE`. For a runtime with no activity source `IDLE` is `-`, so check
+    `AGE` and `MEM` and use `--older-than` or name the PID.

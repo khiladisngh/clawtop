@@ -30,8 +30,8 @@ uv tool install git+https://github.com/khiladisngh/clawtop
 clawtop
 ```
 
-Defaults assume the distro is `OpenClawGateway` and the user is `openclaw`. Change them with
-`CLAWTOP_WSL_DISTRO` and `CLAWTOP_WSL_USER`; see [Configuration](../reference/configuration.md).
+It uses your default WSL distro and that distro's default user. If the gateway lives in another distro,
+set `CLAWTOP_WSL_DISTRO` and `CLAWTOP_WSL_USER`; see [Configuration](../reference/configuration.md).
 
 !!! note
     The forwarded command runs `clawtop` inside WSL, so clawtop must be installed there as well.
@@ -46,4 +46,6 @@ uv tool install --force git+https://github.com/khiladisngh/clawtop
 
 - The gateway runs as the systemd user unit `openclaw-gateway`.
 - `openclaw` is on `PATH` (used for the `sessions` commands).
-- Agent run processes are launched by the gateway (see [how they are recognised](../concepts.md#what-counts-as-a-gateway-run)).
+- Agent run processes are started by the gateway in an agent workspace listed in your OpenClaw config
+  (see [how they are recognised](../concepts.md#what-counts-as-a-gateway-run)). Runtimes that run inside
+  the gateway process have no process of their own, so there is nothing per run to list for them.
