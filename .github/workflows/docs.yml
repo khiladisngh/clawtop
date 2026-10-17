@@ -23,6 +23,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync
       - run: uv run zensical build
+      - name: No unrendered admonitions (strict mode does not catch these)
+        run: '! grep -rq "<p>!!! " site'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -25,6 +25,7 @@ dependencies = ["typer>=0.15", "rich>=13"]
 [project.urls]
 Homepage = "https://github.com/khiladisngh/clawtop"
 Issues = "https://github.com/khiladisngh/clawtop/issues"
+Documentation = "https://khiladisngh.github.io/clawtop/"
 Changelog = "https://github.com/khiladisngh/clawtop/blob/main/CHANGELOG.md"
 
 [project.scripts]
