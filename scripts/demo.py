@@ -16,6 +16,7 @@ import os
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -138,11 +139,17 @@ def history_log() -> str:
     return str(path)
 
 
+KILLED: set[int] = set()  # runs "killed" in this demo session, so they drop out of the next refresh
+ARCHIVED: set[str] = set()  # sessions "archived" in this demo session
+
+
 def live_snapshot() -> Snapshot:
     """The sample snapshot with memory drifting a little, so the TUI graph moves."""
     snap = snapshot()
     elapsed = time.time() - NOW
-    snap.cg_mb += 380 * math.sin(time.time() / 4) + 120 * math.sin(time.time() / 1.3)
+    snap.stacks = [s for s in snap.stacks if s.pid not in KILLED]
+    freed = sum(s.mb for s in snapshot().stacks if s.pid in KILLED)
+    snap.cg_mb += 380 * math.sin(time.time() / 4) + 120 * math.sin(time.time() / 1.3) - freed
     for s in snap.stacks:
         s.leader = replace(s.leader, age_s=s.leader.age_s + elapsed)
         if s.transcript:
@@ -150,17 +157,31 @@ def live_snapshot() -> Snapshot:
     return snap
 
 
+def live_sessions() -> list[sess.Session]:
+    return [replace(s, status="archived") if s.key in ARCHIVED else s for s in sessions()]
+
+
+def fake_kill(stack: Stack) -> list[int]:
+    KILLED.add(stack.pid)
+    return []
+
+
+def fake_archive(items: Sequence[sess.Session]) -> list[dict[str, object]]:
+    ARCHIVED.update(s.key for s in items)
+    return [{"key": s.key, "ok": True, "status": "archived"} for s in items]
+
+
 def run_top() -> int:
-    """`demo.py top`: the real TUI on sample data. Kills and archives are simulated."""
+    """`demo.py top`: the real TUI on sample data. Kills and archives are simulated but visible."""
     from clawtop.tui.app import ClawtopApp
 
     log = Path(os.environ.setdefault("CLAWTOP_LOG", history_log()))
     ClawtopApp(
         interval=float(os.environ.get("CLAWTOP_DEMO_INTERVAL", "2")),
         snapshot_fn=live_snapshot,
-        sessions_fn=sessions,
-        archive_fn=lambda items: [{"key": s.key, "ok": True, "status": "archived"} for s in items],
-        kill_fn=lambda _stack: [],
+        sessions_fn=live_sessions,
+        archive_fn=fake_archive,
+        kill_fn=fake_kill,
         log_path=log,
     ).run()
     return 0

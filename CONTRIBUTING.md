@@ -24,7 +24,7 @@ Publishing uses PyPI trusted publishing (OIDC), so no token is stored anywhere.
 One-time setup (owner):
 
 1. On <https://pypi.org/manage/account/publishing/> add a **pending publisher**: project `clawtop`,
-   owner `khiladisngh`, repository `clawtop`, workflow `release.yml`, environment `pypi`.
+   owner `khiladisngh`, repository `clawtop`, workflow `workflow.yml`, environment `pypi` (or any).
 2. The `pypi` environment already exists in the GitHub repository (Settings, Environments); add a
    required reviewer there if you want a manual approval gate before each upload.
 

@@ -7,7 +7,7 @@ import contextlib
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import ClassVar, TypeVar, cast, overload
 
 from rich.console import RenderableType
 from rich.text import Text
@@ -17,6 +17,7 @@ from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import ModalScreen
+from textual.widget import Widget
 from textual.widgets import DataTable, Footer, Input, Static, TabbedContent, TabPane, Tree
 from textual.widgets.tree import TreeNode
 
@@ -26,6 +27,7 @@ from clawtop import ui
 from clawtop.procs import MB, Snapshot, Stack, kill_stack, take_snapshot
 from clawtop.tui import model
 
+_W = TypeVar("_W", bound=Widget)
 SnapshotFn = Callable[[], Snapshot]
 SessionsFn = Callable[[], list[sess.Session]]
 ArchiveFn = Callable[[Sequence[sess.Session]], list[dict[str, object]]]
@@ -218,9 +220,9 @@ class ClawtopApp(App[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one("#meters").border_title = "memory"
-        self.query_one("#graphbox").border_title = "gateway memory, last 10 min"
-        self.query_one("#detail").border_title = "process tree"
+        self._find("#meters").border_title = "memory"
+        self._find("#graphbox").border_title = "gateway memory, last 10 min"
+        self._find("#detail").border_title = "process tree"
         self._tree().show_root = False
         self._build_columns()
         self._seed_ring()
@@ -240,11 +242,29 @@ class ClawtopApp(App[None]):
         repeat = max(1, round(60 / self.interval))  # one log sample per minute -> keep the time axis even
         self.ring.extend_front([float(r["cg_mb"]) for r in rows for _ in range(repeat)])
 
+    @overload
+    def _find(self, selector: type[_W]) -> _W: ...
+    @overload
+    def _find(self, selector: str) -> Widget: ...
+    @overload
+    def _find(self, selector: str, expect_type: type[_W]) -> _W: ...
+    def _find(self, selector: str | type[Widget], expect_type: type[Widget] | None = None) -> Widget:
+        """Look a widget up on the *main* screen.
+
+        ``App.query_one`` searches whichever screen is on top, so while the help or kill confirmation is
+        open a refresh would not find ``#meters`` and the screen behind the dialog would go stale.
+        """
+        stack = self.screen_stack
+        if not stack:  # the app is shutting down
+            raise NoMatches(str(selector))
+        main = stack[0]
+        return main.query_one(selector, expect_type) if expect_type else main.query_one(selector)  # type: ignore[arg-type]
+
     def _table(self) -> DataTable[Text]:
-        return cast("DataTable[Text]", self.query_one("#runs-table", DataTable))
+        return cast("DataTable[Text]", self._find("#runs-table", DataTable))
 
     def _tree(self) -> Tree[sess.Session | None]:
-        return cast("Tree[sess.Session | None]", self.query_one("#sessions-tree", Tree))
+        return cast("Tree[sess.Session | None]", self._find("#sessions-tree", Tree))
 
     # ------------------------------------------------------------------ data refresh
 
@@ -278,20 +298,20 @@ class ClawtopApp(App[None]):
         self.snap = snap
         self.ring.add(snap.cg_mb)
         self.marked &= {s.pid for s in snap.stacks}
-        self.query_one("#meters", Static).update(model.meters(snap))
+        self._find("#meters", Static).update(model.meters(snap))
         self._draw_graph()
         self._rebuild_table()
         self._update_titlebar()
 
     def _draw_graph(self) -> None:
         snap = self.snap
-        graph = self.query_one("#graph", Static)
+        graph = self._find("#graph", Static)
         raw_limit = (snap.cg_high or snap.cg_max) if snap else None
         limit: float | None = raw_limit / MB if raw_limit else None
         width = graph.size.width or 40
         height = graph.size.height or 4
         graph.update(model.graph(self.ring.values(), width, height, limit))
-        box = self.query_one("#graphbox")
+        box = self._find("#graphbox")
         if snap and snap.main_pid:
             box.border_subtitle = f"now {ui.gib(snap.cg_mb)}" + (f" \u00b7 limit {ui.gib(limit)}" if limit else "")
 
@@ -318,7 +338,7 @@ class ClawtopApp(App[None]):
             t.append(f"   filter '{self.filter_text}'", style="bold cyan")
         if self.marked:
             t.append(f"   {len(self.marked)} marked", style="bold cyan")
-        self.query_one("#titlebar", Static).update(t)
+        self._find("#titlebar", Static).update(t)
 
     # ------------------------------------------------------------------ runs table
 
@@ -356,7 +376,7 @@ class ClawtopApp(App[None]):
         return self.shown[row] if 0 <= row < len(self.shown) else None
 
     def _update_detail(self) -> None:
-        detail = self.query_one("#detail", Static)
+        detail = self._find("#detail", Static)
         s = self._highlighted()
         if s is None:
             note = ui.no_stacks_note(self.snap) if self.snap and not self.snap.stacks else "no runs match the filter"
@@ -390,7 +410,7 @@ class ClawtopApp(App[None]):
         if scope is None:
             return True
         try:
-            return self.query_one(TabbedContent).active == scope
+            return self._find(TabbedContent).active == scope
         except Exception:
             return True
 
@@ -401,7 +421,7 @@ class ClawtopApp(App[None]):
             move()
 
     def action_tab(self, name: str) -> None:
-        self.query_one(TabbedContent).active = name
+        self._find(TabbedContent).active = name
 
     @on(TabbedContent.TabActivated)
     def _tab_changed(self, event: TabbedContent.TabActivated) -> None:
@@ -411,7 +431,7 @@ class ClawtopApp(App[None]):
             self._tree().focus()  # so the arrow keys work straight away
             self.load_sessions()
         elif tab == "history":
-            self.query_one("#history-scroll", VerticalScroll).focus()
+            self._find("#history-scroll", VerticalScroll).focus()
             self.load_history()
         else:
             self._table().focus()
@@ -425,7 +445,7 @@ class ClawtopApp(App[None]):
         self.notify("paused" if self.paused else "resumed", timeout=1.5)
 
     def action_refresh_now(self) -> None:
-        active = self.query_one(TabbedContent).active
+        active = self._find(TabbedContent).active
         if active == "sessions":
             self.load_sessions()
         elif active == "history":
@@ -471,7 +491,7 @@ class ClawtopApp(App[None]):
             self.notify("no stale or orphaned runs", timeout=2)
 
     def action_filter(self) -> None:
-        box = self.query_one("#filter", Input)
+        box = self._find("#filter", Input)
         box.add_class("-open")
         box.value = self.filter_text
         box.focus()
@@ -483,7 +503,7 @@ class ClawtopApp(App[None]):
         self._update_titlebar()
 
     def _close_filter(self, clear: bool) -> None:
-        box = self.query_one("#filter", Input)
+        box = self._find("#filter", Input)
         if clear:
             box.value = ""
             self.filter_text = ""
@@ -499,7 +519,7 @@ class ClawtopApp(App[None]):
 
     def on_key(self, event: object) -> None:
         key = getattr(event, "key", "")
-        if key == "escape" and self.query_one("#filter", Input).has_focus:
+        if key == "escape" and self._find("#filter", Input).has_focus:
             self._close_filter(clear=True)
             getattr(event, "stop", lambda: None)()
 
@@ -547,7 +567,7 @@ class ClawtopApp(App[None]):
 
     @work(exclusive=True, group="sessions")
     async def load_sessions(self) -> None:
-        info = self.query_one("#sessions-info", Static)
+        info = self._find("#sessions-info", Static)
         info.update("loading sessions from openclaw ...")
         try:
             rows = await asyncio.to_thread(self._sessions_fn)
@@ -570,7 +590,7 @@ class ClawtopApp(App[None]):
             for r in (r for r in roots if r.session.agent == agent):
                 self._add_node(group, r)
         window = f"open + finished in the last {self.window_hours}h" if self.window_hours else "open only"
-        self.query_one("#sessions-info", Static).update(
+        self._find("#sessions-info", Static).update(
             f"{len(picked)} sessions ({window})  \u00b7  loaded {time.strftime('%H:%M:%S')}  \u00b7  r reload"
         )
 
@@ -621,7 +641,7 @@ class ClawtopApp(App[None]):
     @work(exclusive=True, group="history")
     async def load_history(self) -> None:
         span = dict(model.SPANS)[self.span_label]
-        body = self.query_one("#history-body", Static)
+        body = self._find("#history-body", Static)
         try:
             rows = await asyncio.to_thread(self._load_history_fn, span)
         except Exception as e:

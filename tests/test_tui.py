@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
@@ -352,20 +353,50 @@ def test_arrow_keys_work_on_the_sessions_tab_without_clicking_first() -> None:
 
 
 def test_a_snapshot_slower_than_the_interval_still_updates_and_does_not_pile_up() -> None:
+    release = threading.Event()
     calls = {"n": 0}
 
     def slow() -> Snapshot:
         calls["n"] += 1
-        time.sleep(0.35)  # takes longer than the 0.1 s interval, as on a machine under memory pressure
+        if calls["n"] == 1:
+            release.wait(timeout=10)  # the first snapshot is "stuck" while many ticks go by
         return snapshot(three())
 
-    app = ClawtopApp(interval=0.1, snapshot_fn=slow, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(interval=0.05, snapshot_fn=slow, log_path=Path("x"), load_history_fn=lambda _s: [])
+
+    async def go() -> None:
+        # Not drive(): that waits for every worker to finish, and the first snapshot is stuck on purpose.
+        async with app.run_test(size=(130, 40)) as pilot:
+            try:
+                await pilot.pause(0.6)  # a dozen ticks fire while the first snapshot is still running
+                assert calls["n"] == 1  # none started another snapshot or cancelled the running one
+                assert app.snap is None
+            finally:
+                release.set()
+            await settle(app, pilot)
+            assert app.snap is not None and len(app.shown) == 3  # the stuck snapshot was applied once released
+
+    asyncio.run(go())
+
+
+def test_a_refresh_that_lands_behind_an_open_dialog_still_updates_the_main_screen() -> None:
+    calls = {"n": 0}
+
+    def snap_fn() -> Snapshot:
+        calls["n"] += 1
+        return snapshot(three() if calls["n"] == 1 else three()[:1])  # the second snapshot has one run
+
+    app = ClawtopApp(interval=30, snapshot_fn=snap_fn, log_path=Path("x"), load_history_fn=lambda _s: [])
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
-        await pilot.pause(1.6)
-        assert app.snap is not None  # a new tick must not cancel the snapshot that is still running
         assert len(app.shown) == 3
-        assert calls["n"] <= 6  # and ticks are skipped while one is in flight, not stacked up
+        await pilot.press("question_mark")
+        assert isinstance(app.screen, HelpScreen)
+        app.refresh_snapshot()  # what the interval timer does while the dialog is open
+        await settle(app, pilot)
+        assert isinstance(app.screen, HelpScreen)  # still showing the dialog
+        table = app.screen_stack[0].query_one("#runs-table", DataTable)
+        assert table.row_count == 1 and len(app.shown) == 1  # but the screen behind it was refreshed
 
     drive(app, script)
 

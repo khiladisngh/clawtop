@@ -1,5 +1,7 @@
 name: release
 
+# The file is named workflow.yml because that is the name the PyPI trusted publisher is registered with.
+
 # Publish to PyPI when a version tag is pushed (git tag v0.3.0 && git push origin v0.3.0).
 # Uses PyPI trusted publishing (OIDC): no API token is stored in GitHub.
 on:

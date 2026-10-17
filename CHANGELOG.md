@@ -35,7 +35,7 @@
   `CLAWTOP_WSL_USER` are set (the old defaults were specific to one machine).
 - Status says when the runtime runs inside the gateway (no per-run process) or no workspaces were found.
 - Dark mode in the docs (follows the OS; header button switches system / light / dark).
-- PyPI release workflow (`release.yml`, trusted publishing): push a `vX.Y.Z` tag to publish.
+- PyPI release workflow (`workflow.yml`, trusted publishing): push a `vX.Y.Z` tag to publish.
 - Fix: docs admonitions (`!!! note`) rendered as literal text because the markdown extension list replaced Zensical's defaults; CI now fails if that happens.
 - `Documentation` project URL.
 - README links are absolute so the PyPI page renders correctly.
