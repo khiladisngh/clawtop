@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- `scripts/demo.py`: run the real CLI against made-up sample data, so you can try clawtop (and record demos) without a gateway.
+- Status notes are labelled `vm:` / `gateway:`; the tree no longer prints `main main`.
+
 ## 0.2.2
 
 - `sessions tree` now includes sessions that finished in the last 6h (`--within N`, 0 = open only), so subagents show under their parent instead of vanishing minutes after they end.
