@@ -9,7 +9,7 @@ history, and the session tree.
   <a href="../assets/walkthrough/clawtop-walkthrough.mp4">Download the MP4</a>.
 </video>
 
-[Download the MP4](../assets/walkthrough/clawtop-walkthrough.mp4) (2.5 MB, 1920x1080, H.264, no audio).
+[Download the MP4](../assets/walkthrough/clawtop-walkthrough.mp4) (2.5 MB, 1920x1080, H.264, no audio). The README shows a 30-second animated excerpt, [`preview.gif`](../assets/walkthrough/preview.gif), cut from the same video: status, the kill picker and the session tree.
 
 ## Chapters
 

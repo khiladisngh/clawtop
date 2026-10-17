@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Documentation site (Zensical, GitHub Pages) with a walkthrough video; README rewritten around it.
+- Documentation site (Zensical, GitHub Pages) with a walkthrough video and a 30-second animated preview in the README.
 - `scripts/demo.py` patches prompts at `typer.prompt`/`typer.confirm` instead of Typer internals.
 
 ## 0.2.3

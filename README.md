@@ -10,12 +10,12 @@ the runaway ones safely; keep your sessions tidy.
 
 <p align="center">
   <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">
-    <img src="https://raw.githubusercontent.com/khiladisngh/clawtop/main/docs/assets/walkthrough/poster.jpg"
-         alt="clawtop status: memory bars for the VM and the gateway, and a table of agent runs with STALE flags"
+    <img src="https://raw.githubusercontent.com/khiladisngh/clawtop/main/docs/assets/walkthrough/preview.gif"
+         alt="Animated preview: clawtop status, the interactive kill picker, and the session tree"
          width="760">
   </a>
   <br>
-  <sub><a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">Watch the 1:43 walkthrough</a>
+  <sub>30-second preview. <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">Watch the full 1:43 walkthrough</a>
   (sample data, simulated kills)</sub>
 </p>
 
