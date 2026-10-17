@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
-from typer._click import termui  # typer vendors click; the prompt hook lives here
+import typer
 
 from clawtop import cli
 from clawtop import sessions as sess
@@ -124,21 +124,23 @@ def history_log() -> str:
 
 def main() -> int:
     answers = [a for a in os.environ.get("CLAWTOP_DEMO_ANSWERS", "").split(";") if a]
+    interactive = bool(answers)  # read once: answers are consumed as the prompts are answered
 
-    def scripted(prompt: str) -> str:  # echo the answer the way a terminal would
+    def answer(text: str, suffix: str) -> str:  # echo the answer the way a terminal would
         ans = answers.pop(0) if answers else ""
-        sys.stdout.write(f"{prompt}{ans}\n")
+        sys.stdout.write(f"{text}{suffix}{ans}\n")
         return ans
 
-    termui.visible_prompt_func = scripted
+    typer.prompt = lambda text, default=None, **_k: answer(text, ": ") or default
+    typer.confirm = lambda text, default=False, **_k: answer(text, " [y/N]: ").lower() in {"y", "yes"}
     os.environ.setdefault("CLAWTOP_LOG", history_log())
     cli.take_snapshot = snapshot
     cli.kill_stack = lambda *_a, **_k: []
     sess.list_sessions = lambda *_a, **_k: sessions()
     sess.archive = lambda items, **_k: [{"key": s.key, "ok": True, "status": "archived"} for s in items]
-    cli.sys = SimpleNamespace(stdin=SimpleNamespace(isatty=lambda: bool(answers)), platform="linux", argv=sys.argv)  # type: ignore[assignment]
+    cli.sys = SimpleNamespace(stdin=SimpleNamespace(isatty=lambda: interactive), platform="linux", argv=sys.argv)  # type: ignore[assignment]
     try:
-        cli.app(sys.argv[1:])
+        cli.app(sys.argv[1:], prog_name="clawtop")
     except SystemExit as e:
         return int(e.code or 0)
     return 0

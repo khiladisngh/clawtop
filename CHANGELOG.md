@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Documentation site (Zensical, GitHub Pages) with a walkthrough video; README rewritten around it.
+- `scripts/demo.py` patches prompts at `typer.prompt`/`typer.confirm` instead of Typer internals.
+
 ## 0.2.3
 
 - `scripts/demo.py`: run the real CLI against made-up sample data, so you can try clawtop (and record demos) without a gateway.

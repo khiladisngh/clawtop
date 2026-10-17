@@ -1,0 +1,47 @@
+[project]
+site_name = "clawtop"
+site_url = "https://khiladisngh.github.io/clawtop/"
+site_description = "htop for OpenClaw: gateway memory per agent run, safe kill, and session management."
+site_author = "Gishant Singh"
+copyright = "&copy; 2026 Gishant Singh. MIT licensed."
+repo_url = "https://github.com/khiladisngh/clawtop"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+site_dir = "site"
+# Warnings (broken links and anchors included) abort the build, so CI fails on them.
+strict = true
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = [
+    { "Install" = "getting-started/install.md" },
+    { "Walkthrough video" = "getting-started/walkthrough.md" },
+    { "Try it without a gateway" = "getting-started/try-without-a-gateway.md" },
+  ] },
+  { "Guides" = [
+    { "Watch memory" = "guides/watch-memory.md" },
+    { "Stop runaway runs" = "guides/stop-runaway-runs.md" },
+    { "Manage sessions" = "guides/manage-sessions.md" },
+    { "Keep a memory history" = "guides/memory-history.md" },
+    { "Harden the gateway" = "guides/harden-the-gateway.md" },
+  ] },
+  { "Concepts" = "concepts.md" },
+  { "Reference" = [
+    { "CLI reference" = "reference/cli.md" },
+    { "Configuration" = "reference/configuration.md" },
+  ] },
+  { "Troubleshooting" = "troubleshooting.md" },
+]
+
+[project.theme]
+features = [
+  "navigation.sections",
+  "navigation.top",
+  "content.code.copy",
+  "search.highlight",
+]
+
+[project.markdown_extensions."pymdownx.superfences"]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]

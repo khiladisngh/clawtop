@@ -14,3 +14,4 @@ uv run pytest --cov
 - A change that alters what can be killed must keep the invariant: never signal a process that
   lacks a gateway signature, and re-check the cmdline right before signalling.
 - Commit messages: Conventional Commits (`feat:`, `fix:`, `docs:` ...). Update `CHANGELOG.md`.
+- Docs live in `docs/` (Zensical, `zensical.toml`): `uv run zensical serve` to preview, `uv run zensical build` must pass (it is strict, so broken links fail). The walkthrough video is described in `docs/getting-started/walkthrough.md`.

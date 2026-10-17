@@ -21,4 +21,5 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pyright
       - run: uv run pytest --cov --cov-report=term-missing
+      - run: uv run zensical build
       - run: uv build
