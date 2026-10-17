@@ -9,7 +9,7 @@ history, and the session tree.
   <a href="../assets/walkthrough/clawtop-walkthrough.mp4">Download the MP4</a>.
 </video>
 
-[Download the MP4](../assets/walkthrough/clawtop-walkthrough.mp4) (2.5 MB, 1920x1080, H.264, no audio). The README shows a 30-second animated excerpt, [`preview.gif`](../assets/walkthrough/preview.gif), cut from the same video: status, the kill picker and the session tree.
+[Download the MP4](../assets/walkthrough/clawtop-walkthrough.mp4) (2.7 MB, 1920x1080, H.264, no audio). The README shows a 30-second animated excerpt, [`preview.gif`](../assets/walkthrough/preview.gif), cut from the same video: status, the kill picker and the session tree.
 
 ## Chapters
 
@@ -28,11 +28,14 @@ history, and the session tree.
 
 ## What to know
 
-- **Real:** every command, every line of output and the colours come from `clawtop 0.2.3`, installed
+- **Real:** every command, every line of output and the colours come from `clawtop 0.3.0`, installed
   from GitHub into a throwaway directory on Linux (WSL). The install, the version and the help text are
   unedited captures.
 - **Sample data:** the processes, memory figures, session titles and the memory history are made up, so
-  that no real session titles or IDs appear in a public video. The data lives in
+  that no real session titles or IDs appear in a public video. The sample runs use three different
+  programs (`claude`, `gemini`, `opencode`) to show that detection is not tied to one runtime. That is
+  a demonstration of the display, not proof that those runtimes were tested: only Claude CLI has been
+  verified on a real gateway (see [Concepts](../concepts.md#which-runtimes-does-clawtop-cover)). The data lives in
   [`scripts/demo.py`](https://github.com/khiladisngh/clawtop/blob/main/scripts/demo.py); you can run it
   yourself (see [Try it without a gateway](try-without-a-gateway.md)).
 - **Simulated:** killing runs and archiving sessions. Nothing real is stopped or archived.
