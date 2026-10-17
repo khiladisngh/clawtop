@@ -82,9 +82,9 @@ def test_kill_survivors_give_nonzero_exit(two_stacks: object, monkeypatch: pytes
 
 def test_sessions_prune_archives_only_idle_subagents(monkeypatch: pytest.MonkeyPatch) -> None:
     rows = [
-        sess.Session("agent:forge:subagent:old", "forge", "subagent", "open", 10 * 3600, 0),
-        sess.Session("agent:forge:subagent:new", "forge", "subagent", "open", 60, 0),
-        sess.Session("agent:maya:discord:channel:1", "maya", "discord", "open", 50 * 3600, 0),
+        sess.Session("agent:builder:subagent:old", "builder", "subagent", "open", 10 * 3600, 0),
+        sess.Session("agent:builder:subagent:new", "builder", "subagent", "open", 60, 0),
+        sess.Session("agent:writer:discord:channel:1", "writer", "discord", "open", 50 * 3600, 0),
     ]
     monkeypatch.setattr(cli.sess, "list_sessions", lambda: rows)
     seen: list[list[str]] = []
@@ -96,7 +96,7 @@ def test_sessions_prune_archives_only_idle_subagents(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(cli.sess, "archive", fake_archive)
     r = runner.invoke(cli.app, ["sessions", "prune", "--idle-hours", "6", "--yes"])
     assert r.exit_code == 0
-    assert seen == [["agent:forge:subagent:old"]]
+    assert seen == [["agent:builder:subagent:old"]]
 
 
 def test_sessions_error_from_openclaw_is_a_clean_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -124,8 +124,8 @@ def test_status_when_gateway_is_down_still_lists_leftover_orphans(monkeypatch: p
 
 
 def test_sessions_tree_and_titles_show_the_label(monkeypatch: pytest.MonkeyPatch) -> None:
-    parent = sess.Session("agent:forge:main", "forge", "main", "open", 10, 0)
-    kid = sess.Session("agent:forge:subagent:a", "forge", "subagent", "open", 5, 0, "rig survey", parent.key)
+    parent = sess.Session("agent:builder:main", "builder", "main", "open", 10, 0)
+    kid = sess.Session("agent:builder:subagent:a", "builder", "subagent", "open", 5, 0, "rig survey", parent.key)
     monkeypatch.setattr(cli.sess, "list_sessions", lambda: [parent, kid])
     tree = runner.invoke(cli.app, ["sessions", "tree"])
     assert tree.exit_code == 0
@@ -137,9 +137,9 @@ def test_sessions_tree_and_titles_show_the_label(monkeypatch: pytest.MonkeyPatch
 def test_tree_shows_recently_finished_subagents_under_their_parent_but_not_old_ones(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    main = sess.Session("agent:forge:main", "forge", "main", "open", 30, 0)
-    fresh = sess.Session("agent:forge:subagent:a", "forge", "subagent", "done", 600, 0, "fresh job", main.key)
-    old = sess.Session("agent:forge:subagent:b", "forge", "subagent", "done", 3 * 86400, 0, "ancient job", main.key)
+    main = sess.Session("agent:builder:main", "builder", "main", "open", 30, 0)
+    fresh = sess.Session("agent:builder:subagent:a", "builder", "subagent", "done", 600, 0, "fresh job", main.key)
+    old = sess.Session("agent:builder:subagent:b", "builder", "subagent", "done", 3 * 86400, 0, "ancient job", main.key)
     monkeypatch.setattr(cli.sess, "list_sessions", lambda: [main, fresh, old])
     r = runner.invoke(cli.app, ["sessions", "tree"])
     assert "fresh job" in r.output and "ancient job" not in r.output

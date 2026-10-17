@@ -21,15 +21,15 @@ from clawtop.procs import (
 from .conftest import UUID_A, make_proc, proc, stack
 
 HZ = os.sysconf("SC_CLK_TCK")
-WS = Workspaces({"maya": "/srv/ws/maya"}, ("/srv/ws",))
+WS = Workspaces({"writer": "/srv/ws/writer"}, ("/srv/ws",))
 MARKER = "OPENCLAW_GATEWAY_SERVICE_PID=999"
 
 
 def test_read_procs_survives_awkward_comm_and_computes_age(fake_proc: Path) -> None:
     # comm may contain spaces and ')' - a naive split() shifts every later field
-    make_proc(fake_proc, 42, 7, "gemini --yolo", cwd="/srv/ws/maya", pss_kb=2048, start_ticks=400 * HZ, comm="a b) c")
+    make_proc(fake_proc, 42, 7, "gemini --yolo", cwd="/srv/ws/writer", pss_kb=2048, start_ticks=400 * HZ, comm="a b) c")
     p = read_procs(fake_proc)[42]
-    assert (p.ppid, p.cwd, p.mb) == (7, "/srv/ws/maya", 2.0)
+    assert (p.ppid, p.cwd, p.mb) == (7, "/srv/ws/writer", 2.0)
     assert p.age_s == 1000 - 400  # uptime minus start time
     assert p.cmd == "gemini --yolo"
 
@@ -48,8 +48,8 @@ def test_labels_name_what_a_launcher_runs_not_the_launcher() -> None:
 
 
 def test_workspaces_map_a_directory_to_its_agent() -> None:
-    assert WS.agent_for("/srv/ws/maya") == "maya"
-    assert WS.agent_for("/srv/ws/maya/sub/dir") == "maya"
+    assert WS.agent_for("/srv/ws/writer") == "writer"
+    assert WS.agent_for("/srv/ws/writer/sub/dir") == "writer"
     assert WS.agent_for("/srv/ws/other") == "other"  # not configured per agent: first dir under a root
     assert WS.agent_for("/srv/ws") is None
     assert WS.agent_for("/srv/ws-evil/x") is None  # a shared prefix is not a match
@@ -62,15 +62,15 @@ def test_load_workspaces_reads_the_openclaw_config(tmp_path: Path) -> None:
     cfg = {
         "agents": {
             "defaults": {"workspace": "/data/ws"},
-            "entries": {"atlas": {"workspace": "/data/special/atlas"}, "plain": {}},
+            "entries": {"researcher": {"workspace": "/data/special/researcher"}, "plain": {}},
         }
     }
     (tmp_path / ".openclaw" / "openclaw.json").write_text(json.dumps(cfg))
     ws = load_workspaces(env={}, home=tmp_path)
-    assert ws.agents == {"atlas": "/data/special/atlas"}
+    assert ws.agents == {"researcher": "/data/special/researcher"}
     assert ws.roots == ("/data/ws",)
-    assert ws.agent_for("/data/special/atlas/x") == "atlas"
-    assert ws.agent_for("/data/ws/lumen") == "lumen"
+    assert ws.agent_for("/data/special/researcher/x") == "researcher"
+    assert ws.agent_for("/data/ws/editor") == "editor"
 
 
 def test_load_workspaces_honours_env_overrides_and_survives_json5_or_a_missing_file(tmp_path: Path) -> None:
@@ -94,10 +94,10 @@ def test_a_stack_is_the_top_process_in_a_workspace_with_everything_it_spawned() 
         p.pid: p
         for p in [
             proc(100, 1, "node --max-old-space-size=8192 /x/node_modules/openclaw/dist/index.js gateway"),
-            proc(200, 100, "/usr/bin/gemini --yolo", "/srv/ws/maya", mb=250),
-            proc(201, 200, "node /opt/tools/bin/some-mcp serve", "/srv/ws/maya", mb=250),
-            proc(202, 200, "npm exec @scope/pkg-server", "/srv/ws/maya", mb=80),
-            proc(203, 202, "sh -c 'pkg-server'", "/srv/ws/maya", mb=60),
+            proc(200, 100, "/usr/bin/gemini --yolo", "/srv/ws/writer", mb=250),
+            proc(201, 200, "node /opt/tools/bin/some-mcp serve", "/srv/ws/writer", mb=250),
+            proc(202, 200, "npm exec @scope/pkg-server", "/srv/ws/writer", mb=80),
+            proc(203, 202, "sh -c 'pkg-server'", "/srv/ws/writer", mb=60),
             # the gateway's own worker, and an MCP server it runs for itself (home dir, not a workspace)
             proc(300, 100, "node /x/node_modules/openclaw/dist/process/worker.js", "/home/u", mb=50),
             proc(301, 300, "node /opt/tools/bin/shared-mcp serve", "/home/u", mb=120),
@@ -106,7 +106,7 @@ def test_a_stack_is_the_top_process_in_a_workspace_with_everything_it_spawned() 
     stacks, infra = build_stacks(procs, set(procs), main=100, workspaces=WS)
     assert len(stacks) == 1
     s = stacks[0]
-    assert (s.kind, s.agent, s.runtime) == ("run", "maya", "gemini")
+    assert (s.kind, s.agent, s.runtime) == ("run", "writer", "gemini")
     assert {p.pid for p in s.procs} == {200, 201, 202, 203}
     assert s.mb == 640
     assert s.parts == ["pkg-server", "some-mcp"]
@@ -131,9 +131,9 @@ def test_a_hand_started_cli_is_never_a_stack_but_a_leftover_gateway_run_is_an_or
         p.pid: p
         for p in [
             proc(100, 1, "node /x/node_modules/openclaw/dist/index.js gateway"),
-            proc(500, 1, "claude --resume mine", "/srv/ws/maya"),  # in a workspace, but no gateway marker
-            proc(600, 1, "gemini", "/srv/ws/maya"),  # gateway marker: left behind by an earlier gateway
-            proc(601, 600, "node some-mcp", "/srv/ws/maya"),
+            proc(500, 1, "claude --resume mine", "/srv/ws/writer"),  # in a workspace, but no gateway marker
+            proc(600, 1, "gemini", "/srv/ws/writer"),  # gateway marker: left behind by an earlier gateway
+            proc(601, 600, "node some-mcp", "/srv/ws/writer"),
             proc(700, 1, "gemini", "/home/u/elsewhere"),  # marker, but not in an agent workspace
         ]
     }
@@ -171,7 +171,7 @@ def test_idle_time_comes_from_a_transcript_only_for_runtimes_that_have_one(tmp_p
 
 
 def _alive_stack(fake_proc: Path) -> Stack:
-    make_proc(fake_proc, 10, 1, "gemini", cwd="/srv/ws/maya")
+    make_proc(fake_proc, 10, 1, "gemini", cwd="/srv/ws/writer")
     make_proc(fake_proc, 11, 10, "node some-mcp")
     make_proc(fake_proc, 12, 10, "node stubborn")
     procs = read_procs(fake_proc)

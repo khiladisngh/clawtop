@@ -13,12 +13,12 @@ from .conftest import snapshot, stack
 RAW = json.dumps(
     {
         "sessions": [
-            {"key": "agent:forge:subagent:a", "ageMs": 7_200_000, "totalTokens": 5},
-            {"key": "agent:forge:subagent:b", "ageMs": 60_000, "status": ""},
-            {"key": "agent:forge:subagent:c", "ageMs": 9_000_000, "status": "done"},
-            {"key": "agent:maya:discord:channel:1", "ageMs": 99_000_000},
-            {"key": "agent:atlas:node-80db96a94980", "ageMs": 1000},
-            {"key": "agent:ledger:cron:x", "ageMs": 8_000_000, "status": "killed"},
+            {"key": "agent:builder:subagent:a", "ageMs": 7_200_000, "totalTokens": 5},
+            {"key": "agent:builder:subagent:b", "ageMs": 60_000, "status": ""},
+            {"key": "agent:builder:subagent:c", "ageMs": 9_000_000, "status": "done"},
+            {"key": "agent:writer:discord:channel:1", "ageMs": 99_000_000},
+            {"key": "agent:researcher:node-80db96a94980", "ageMs": 1000},
+            {"key": "agent:auditor:cron:x", "ageMs": 8_000_000, "status": "killed"},
         ]
     }
 )
@@ -26,20 +26,20 @@ RAW = json.dumps(
 
 def test_open_means_not_terminal_and_kind_is_parsed() -> None:
     rows = {s.key: s for s in sess.parse_sessions(RAW)}
-    assert rows["agent:forge:subagent:a"].is_open and rows["agent:forge:subagent:b"].is_open
-    assert not rows["agent:forge:subagent:c"].is_open
-    assert not rows["agent:ledger:cron:x"].is_open
-    assert rows["agent:atlas:node-80db96a94980"].kind == "node"
-    assert rows["agent:maya:discord:channel:1"].kind == "discord"
+    assert rows["agent:builder:subagent:a"].is_open and rows["agent:builder:subagent:b"].is_open
+    assert not rows["agent:builder:subagent:c"].is_open
+    assert not rows["agent:auditor:cron:x"].is_open
+    assert rows["agent:researcher:node-80db96a94980"].kind == "node"
+    assert rows["agent:writer:discord:channel:1"].kind == "discord"
 
 
 def test_prune_selection_is_idle_open_subagents_only_by_default() -> None:
     rows = sess.parse_sessions(RAW)
     picked = sess.select(rows, idle_s=3600, kinds=sess.DEFAULT_PRUNE_KINDS)
     # a: open+idle 2h. b: idle 1m. c: already done. discord channel: not a subagent.
-    assert [s.key for s in picked] == ["agent:forge:subagent:a"]
+    assert [s.key for s in picked] == ["agent:builder:subagent:a"]
     everything = sess.select(rows, idle_s=0)
-    assert everything[0].key == "agent:maya:discord:channel:1"  # longest idle first
+    assert everything[0].key == "agent:writer:discord:channel:1"  # longest idle first
 
 
 def test_archive_batches_one_call_per_agent() -> None:
@@ -57,13 +57,13 @@ def test_archive_batches_one_call_per_agent() -> None:
             }
         )
 
-    items = [sess.from_key(k) for k in ("agent:forge:subagent:a", "agent:forge:subagent:b", "agent:maya:cron:z")]
+    items = [sess.from_key(k) for k in ("agent:builder:subagent:a", "agent:builder:subagent:b", "agent:writer:cron:z")]
     res = sess.archive(items, run=fake)
     assert len(res) == 3
     assert len(calls) == 2
-    forge = next(c for c in calls if "forge" in c)
-    assert forge[:5] == ["sessions", "archive", "--agent", "forge", "--json"]
-    assert "--dry-run" not in forge
+    builder = next(c for c in calls if "builder" in c)
+    assert builder[:5] == ["sessions", "archive", "--agent", "builder", "--json"]
+    assert "--dry-run" not in builder
 
 
 def test_from_key_rejects_non_keys() -> None:
@@ -114,28 +114,28 @@ def test_parse_reads_title_and_parent_from_gateway_json() -> None:
         {
             "sessions": [
                 {
-                    "key": "agent:forge:subagent:x",
+                    "key": "agent:builder:subagent:x",
                     "label": "Worktree removal proposal",
-                    "parentSessionKey": "agent:forge:main",
+                    "parentSessionKey": "agent:builder:main",
                     "spawnDepth": 1,
                 },
-                {"key": "agent:forge:subagent:y", "spawnedBy": "agent:forge:main", "agentRuntime": {"id": "codex"}},
-                {"key": "agent:forge:main"},
+                {"key": "agent:builder:subagent:y", "spawnedBy": "agent:builder:main", "agentRuntime": {"id": "codex"}},
+                {"key": "agent:builder:main"},
             ]
         }
     )
     x, y, main = sess.parse_sessions(raw)
-    assert (x.label, x.parent, x.depth) == ("Worktree removal proposal", "agent:forge:main", 1)
-    assert y.parent == "agent:forge:main" and y.label is None  # falls back to spawnedBy
+    assert (x.label, x.parent, x.depth) == ("Worktree removal proposal", "agent:builder:main", 1)
+    assert y.parent == "agent:builder:main" and y.label is None  # falls back to spawnedBy
     assert main.parent is None
     assert (x.runtime, y.runtime, main.runtime) == (None, "codex", None)  # whatever OpenClaw reports; never assumed
 
 
 def test_tree_nests_open_subagent_under_a_finished_parent_marked_as_context() -> None:
-    parent = _s("agent:forge:main", status="done")
-    kid = _s("agent:forge:subagent:a", parent=parent.key, label="rig survey")
-    grandkid = _s("agent:forge:subagent:b", parent=kid.key)
-    other = _s("agent:maya:main")
+    parent = _s("agent:builder:main", status="done")
+    kid = _s("agent:builder:subagent:a", parent=parent.key, label="rig survey")
+    grandkid = _s("agent:builder:subagent:b", parent=kid.key)
+    other = _s("agent:writer:main")
     everything = [parent, kid, grandkid, other]
     roots = sess.build_tree(sess.select(everything), everything)
     assert [r.session.key for r in roots] == [parent.key, other.key]
@@ -147,9 +147,9 @@ def test_tree_nests_open_subagent_under_a_finished_parent_marked_as_context() ->
 
 
 def test_tree_survives_dangling_parent_and_cycles() -> None:
-    lost = _s("agent:forge:subagent:lost", parent="agent:forge:subagent:gone")
-    a = _s("agent:atlas:subagent:a", parent="agent:atlas:subagent:b")
-    b = _s("agent:atlas:subagent:b", parent="agent:atlas:subagent:a")
+    lost = _s("agent:builder:subagent:lost", parent="agent:builder:subagent:gone")
+    a = _s("agent:researcher:subagent:a", parent="agent:researcher:subagent:b")
+    b = _s("agent:researcher:subagent:b", parent="agent:researcher:subagent:a")
     everything = [lost, a, b]
     roots = sess.build_tree(everything, everything)
     assert lost.key in {r.session.key for r in roots}  # dangling parent: becomes its own root
@@ -159,22 +159,24 @@ def test_tree_survives_dangling_parent_and_cycles() -> None:
 def test_archived_sessions_are_not_open_even_though_the_gateway_json_gives_them_no_status(tmp_path: Path) -> None:
     import sqlite3
 
-    db = tmp_path / "forge" / "agent" / "openclaw-agent.sqlite"
+    db = tmp_path / "builder" / "agent" / "openclaw-agent.sqlite"
     db.parent.mkdir(parents=True)
     con = sqlite3.connect(db)
     con.execute("CREATE TABLE session_nodes (session_key TEXT PRIMARY KEY, archived_at INTEGER)")
     con.executemany(
         "INSERT INTO session_nodes VALUES (?, ?)",
-        [("agent:forge:subagent:old", 1792162140061), ("agent:forge:subagent:live", None)],
+        [("agent:builder:subagent:old", 1792162140061), ("agent:builder:subagent:live", None)],
     )
     con.commit()
     con.close()
     (tmp_path / "broken" / "agent").mkdir(parents=True)
     (tmp_path / "broken" / "agent" / "openclaw-agent.sqlite").write_bytes(b"not a database")  # must not abort
 
-    raw = json.dumps({"sessions": [{"key": "agent:forge:subagent:old"}, {"key": "agent:forge:subagent:live"}]})
+    raw = json.dumps({"sessions": [{"key": "agent:builder:subagent:old"}, {"key": "agent:builder:subagent:live"}]})
     rows = {s.key: s for s in sess.list_sessions(run=lambda _a: raw, agents_dir=tmp_path)}
-    assert not rows["agent:forge:subagent:old"].is_open and rows["agent:forge:subagent:old"].status == "archived"
-    assert rows["agent:forge:subagent:live"].is_open
-    assert [s.key for s in sess.select(rows.values(), kinds=sess.DEFAULT_PRUNE_KINDS)] == ["agent:forge:subagent:live"]
+    assert not rows["agent:builder:subagent:old"].is_open and rows["agent:builder:subagent:old"].status == "archived"
+    assert rows["agent:builder:subagent:live"].is_open
+    assert [s.key for s in sess.select(rows.values(), kinds=sess.DEFAULT_PRUNE_KINDS)] == [
+        "agent:builder:subagent:live"
+    ]
     assert sess.archived_keys(tmp_path / "missing") == set()
