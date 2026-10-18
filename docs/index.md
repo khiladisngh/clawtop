@@ -3,7 +3,7 @@
 **htop for [OpenClaw](https://openclaw.ai).** See where your gateway's memory goes, per agent run;
 stop the runaway ones safely; keep your sessions tidy.
 
-[![clawtop status: VM and gateway memory bars and a table of agent runs](assets/walkthrough/poster.jpg)](getting-started/walkthrough.md)
+[![clawtop top: live memory graph and a table of agent runs, sample data](assets/walkthrough/poster.jpg)](getting-started/walkthrough.md)
 
 *A walkthrough video (1:38, sample data) is on the [walkthrough page](getting-started/walkthrough.md).*
 

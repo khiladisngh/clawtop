@@ -7,6 +7,8 @@ uv run pyright
 uv run pytest --cov
 ```
 
+- Editor: `code clawtop.code-workspace` (VS Code) sets up ruff format-on-save, pytest discovery, Pylance strict mode from
+  `pyproject.toml`, a `check` task (lint, types, tests; CI also runs the docs build and `uv build`) and launch configs that run `clawtop top` on the sample data.
 - Layout: `procs.py` (discovery and kill), `sessions.py` (`openclaw sessions` wrapper),
   `history.py`, `ui.py` (pure Rich renderers), `cli.py` (Typer), `tui/` (the Textual app: `model.py` is pure and
   tested without a terminal, `app.py` is the widgets and keys). Keep logic out of `cli.py`.

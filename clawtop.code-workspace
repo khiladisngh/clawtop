@@ -1,0 +1,157 @@
+{
+	// Open with: code clawtop.code-workspace
+	// Prerequisite: `uv sync` (creates .venv; the Python extension picks it up on its own).
+	"folders": [{ "name": "clawtop", "path": "." }],
+	"settings": {
+		// Match .gitattributes (`* text=auto eol=lf`) and ruff's 120 columns (pyproject.toml).
+		"files.eol": "\n",
+		"files.insertFinalNewline": true,
+		"files.trimFinalNewlines": true,
+		"files.trimTrailingWhitespace": true,
+		"[markdown]": { "files.trimTrailingWhitespace": false },
+		"editor.rulers": [120],
+
+		// Noise: generated or machine-local directories.
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.egg-info": true,
+			"**/.pytest_cache": true,
+			"**/.ruff_cache": true,
+			"**/.cache": true
+		},
+		"search.exclude": {
+			"**/.venv": true,
+			"**/site": true,
+			"uv.lock": true
+		},
+		"files.watcherExclude": {
+			"**/.venv/**": true,
+			"**/site/**": true,
+			"**/.git/objects/**": true
+		},
+
+		// Ruff formats and lints; rules live in [tool.ruff] in pyproject.toml.
+		"[python]": {
+			"editor.defaultFormatter": "charliermarsh.ruff",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.fixAll.ruff": "explicit",
+				"source.organizeImports.ruff": "explicit"
+			}
+		},
+		// Pylance reads [tool.pyright] (strict, src/ only); do not override it here.
+		"python.analysis.diagnosticMode": "openFilesOnly",
+		"python.testing.pytestEnabled": true,
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestArgs": ["tests"],
+
+		"[toml]": { "editor.defaultFormatter": "tamasfe.even-better-toml" }
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"ms-python.vscode-pylance",
+			"ms-python.debugpy",
+			"charliermarsh.ruff",
+			"tamasfe.even-better-toml"
+		]
+	},
+	// `--no-sync` avoids uv rewriting .venv while an editor or test run has it open (fails on Windows).
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "ruff: lint",
+				"type": "shell",
+				"command": "uv run --no-sync ruff check .",
+				"problemMatcher": []
+			},
+			{
+				"label": "ruff: format check",
+				"type": "shell",
+				"command": "uv run --no-sync ruff format --check .",
+				"problemMatcher": []
+			},
+			{
+				"label": "pyright",
+				"type": "shell",
+				"command": "uv run --no-sync pyright",
+				"problemMatcher": []
+			},
+			{
+				"label": "pytest",
+				"type": "shell",
+				"command": "uv run --no-sync pytest",
+				"problemMatcher": [],
+				"group": { "kind": "test", "isDefault": true }
+			},
+			{
+				"label": "check (lint, types, tests)",
+				"dependsOn": ["ruff: lint", "ruff: format check", "pyright", "pytest"],
+				"dependsOrder": "sequence",
+				"problemMatcher": [],
+				"group": { "kind": "build", "isDefault": true }
+			},
+			{
+				"label": "docs: build (strict)",
+				"type": "shell",
+				"command": "uv run --no-sync zensical build",
+				"problemMatcher": []
+			},
+			{
+				"label": "docs: serve",
+				"type": "shell",
+				"command": "uv run --no-sync zensical serve",
+				"isBackground": true,
+				"problemMatcher": []
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "clawtop top (sample data)",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/scripts/demo.py",
+				"args": ["top"],
+				"console": "integratedTerminal",
+				"justMyCode": false
+			},
+			{
+				"name": "clawtop status (sample data)",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/scripts/demo.py",
+				"args": ["status"],
+				"console": "integratedTerminal"
+			},
+			{
+				"name": "clawtop (real gateway, args)",
+				"type": "debugpy",
+				"request": "launch",
+				"module": "clawtop",
+				"args": "${input:clawtopArgs}",
+				"console": "integratedTerminal"
+			},
+			{
+				"name": "pytest: current file",
+				"type": "debugpy",
+				"request": "launch",
+				"module": "pytest",
+				"args": ["${file}", "-x"],
+				"console": "integratedTerminal",
+				"justMyCode": false
+			}
+		],
+		"inputs": [
+			{
+				"id": "clawtopArgs",
+				"type": "promptString",
+				"description": "clawtop arguments (empty = status; try: top, status --json)",
+				"default": "top"
+			}
+		]
+	}
+}
