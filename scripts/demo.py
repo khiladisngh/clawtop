@@ -189,8 +189,11 @@ def run_top() -> int:
 
 
 def main() -> int:
-    if sys.argv[1:2] in ([], ["top"]):  # like the real thing: bare `clawtop` opens the screen
-        return run_top()
+    argv = sys.argv[1:]
+    if argv == ["top"] or (not argv and sys.stdin.isatty() and sys.stdout.isatty()):
+        return run_top()  # like the real thing: bare `clawtop` opens the screen on a terminal...
+    if not argv:
+        argv = ["status"]  # ...and prints the status when there is none
     answers = [a for a in os.environ.get("CLAWTOP_DEMO_ANSWERS", "").split(";") if a]
     interactive = bool(answers)  # read once: answers are consumed as the prompts are answered
 
@@ -206,9 +209,14 @@ def main() -> int:
     cli.kill_stack = lambda *_a, **_k: []
     sess.list_sessions = lambda *_a, **_k: sessions()
     sess.archive = lambda items, **_k: [{"key": s.key, "ok": True, "status": "archived"} for s in items]
-    cli.sys = SimpleNamespace(stdin=SimpleNamespace(isatty=lambda: interactive), platform="linux", argv=sys.argv)  # type: ignore[assignment]
+    cli.sys = SimpleNamespace(
+        stdin=SimpleNamespace(isatty=lambda: interactive),
+        stdout=SimpleNamespace(isatty=lambda: False),
+        platform="linux",
+        argv=sys.argv,
+    )  # type: ignore[assignment]
     try:
-        cli.app(sys.argv[1:], prog_name="clawtop")
+        cli.app(argv, prog_name="clawtop")
     except SystemExit as e:
         return int(e.code or 0)
     return 0
