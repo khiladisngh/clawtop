@@ -12,12 +12,12 @@ the runaway ones safely; keep your sessions tidy.
 <p align="center">
   <a href="https://khiladisngh.github.io/clawtop/guides/interactive-top/">
     <img src="https://raw.githubusercontent.com/khiladisngh/clawtop/main/docs/assets/tui/top.gif"
-         alt="Animated tour of clawtop top: live memory graph, sortable runs, kill confirmation, session tree and history"
+         alt="Animated tour of clawtop: a bottom-style dashboard with a live memory graph, sortable runs, kill confirmation, session tree and history"
          width="860">
   </a>
   <br>
-  <sub><code>clawtop top</code> on sample data (kills simulated). Also:
-  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">the 1:38 video walkthrough</a>
+  <sub><code>clawtop</code> on sample data (kills simulated). Also:
+  <a href="https://khiladisngh.github.io/clawtop/getting-started/walkthrough/">the video walkthrough</a>
   (install from PyPI, then the whole screen).</sub>
 </p>
 
@@ -60,8 +60,8 @@ See [Install](https://khiladisngh.github.io/clawtop/getting-started/install/).
 
 | Command | What it does |
 |---|---|
-| `clawtop` / `status` | VM and gateway memory plus every agent run stack. `--json` for scripts. |
-| `clawtop top` | Interactive htop-style screen: live memory graph, sortable runs, kill, session tree, history. |
+| `clawtop` | Interactive bottom-style screen: live memory graph, sortable runs, kill, session tree, history. Prints `status` instead when there is no terminal. |
+| `clawtop status` | One-shot printout: VM and gateway memory plus every agent run stack. `--json` for scripts. |
 | `clawtop kill` | Interactive picker: choose rows by number, `stale` or `all`. |
 | `clawtop kill PID...` | Kill specific stacks by leader PID. |
 | `clawtop kill --idle 30` | Kill runs with no transcript activity for 30 minutes. |

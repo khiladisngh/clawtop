@@ -26,7 +26,8 @@ err = Console(stderr=True)
 
 app = typer.Typer(
     help="[bold]clawtop[/]: htop for OpenClaw. See gateway memory per agent run, kill runaway "
-    "runs, and manage open sessions.\n\nRun with no command for a live-at-a-glance status.",
+    "runs, and manage open sessions.\n\nRun with no command to open the interactive screen "
+    "(a one-shot status when there is no terminal).",
     rich_markup_mode="rich",
     no_args_is_help=False,
     add_completion=False,
@@ -56,7 +57,20 @@ def root(
     ] = False,
 ) -> None:
     if ctx.invoked_subcommand is None:
-        out.print(ui.status(take_snapshot()))
+        if _has_terminal():
+            _open_screen(2.0, ui.STALE_IDLE_MIN)
+        else:  # a pipe, cron or a script: keep the printout
+            out.print(ui.status(take_snapshot()))
+
+
+def _has_terminal() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _open_screen(interval: float, stale_min: float) -> None:
+    from clawtop.tui.app import run
+
+    run(interval=interval, stale_min=stale_min)
 
 
 @contextmanager
@@ -91,13 +105,11 @@ def top(
     interval: Annotated[float, typer.Option("--interval", "-i", min=0.5, help="Seconds between refreshes.")] = 2.0,
     stale_min: StaleOpt = ui.STALE_IDLE_MIN,
 ) -> None:
-    """Interactive live view (like htop): runs, sessions and history. Press ? for keys, q to quit."""
-    if not sys.stdout.isatty():
+    """The interactive screen (what plain `clawtop` opens), with options. Press ? for keys, q to quit."""
+    if not _has_terminal():
         err.print("[red]error:[/] `clawtop top` needs a terminal; use `clawtop status` for scripts.")
         raise typer.Exit(1)
-    from clawtop.tui.app import run
-
-    run(interval=interval, stale_min=stale_min)
+    _open_screen(interval, stale_min)
 
 
 # --------------------------------------------------------------------------- kill

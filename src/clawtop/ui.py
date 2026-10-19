@@ -203,6 +203,14 @@ def sessions_tree(roots: Sequence[Node]) -> RenderableType:
 
 
 def history(rows: Sequence[Sample], width: int = 64) -> RenderableType:
+    body = history_body(rows, width)
+    if not rows:
+        return body
+    return Panel(body, title="memory history", title_align="left", border_style="cyan", padding=(1, 2))
+
+
+def history_body(rows: Sequence[Sample], width: int = 64) -> RenderableType:
+    """The history content without a frame (the TUI draws its own panel around it)."""
     if not rows:
         return Text("No samples in that window. Run `clawtop sampler install`.", style="yellow")
     cg = [r["cg_mb"] for r in rows]
@@ -229,4 +237,4 @@ def history(rows: Sequence[Sample], width: int = 64) -> RenderableType:
         for pid, agent, mb, age_min in peak["stacks"]:
             tb.add_row(str(pid), str(agent), gib(float(mb)), dur(float(age_min) * 60))
         parts += [Text(), Text(f"stacks at peak ({len(peak['stacks'])})", style="bold"), tb]
-    return Panel(Group(*parts), title="memory history", title_align="left", border_style="cyan", padding=(1, 2))
+    return Group(*parts)

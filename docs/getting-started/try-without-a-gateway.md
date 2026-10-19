@@ -9,16 +9,11 @@ git clone https://github.com/khiladisngh/clawtop
 cd clawtop
 uv sync
 
-uv run python scripts/demo.py                    # status overview
+uv run python scripts/demo.py                    # the interactive screen
+uv run python scripts/demo.py status             # the one-shot overview
 uv run python scripts/demo.py sessions tree
 uv run python scripts/demo.py history --last 6h
 uv run python scripts/demo.py sessions list --kind subagent --titles
-```
-
-The interactive screen runs on the same data:
-
-```sh
-uv run python scripts/demo.py top
 ```
 
 The `kill` picker needs answers; pass them in `CLAWTOP_DEMO_ANSWERS`, separated by `;`:

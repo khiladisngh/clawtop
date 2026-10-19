@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0
+
+- **Plain `clawtop` now opens the interactive screen.** With no terminal (a pipe, cron, a script) it still
+  prints the one-shot status, and `clawtop status` is unchanged. `clawtop top` remains, for its options.
+- **A bottom-style redesign of the screen.** Instead of tabs, six bordered panels share the screen: the
+  gateway memory graph, the meters, the runs table, the process tree, the sessions tree and the history.
+  Titles sit in the border, each panel shows its keys on its lower border, and the focused panel gets the
+  bright border.
+  - The graph is a braille line plot with a y axis, a time axis and a legend. It shows three lines: the
+    whole gateway, the agent runs, and OpenClaw's other children (MCP servers and helpers).
+  - Gauges are bottom-style (`[|||||   ]`), with a breakdown of where the gateway's memory goes.
+  - `Tab` / `Shift+Tab` and `1` to `4` move between panels; `e` expands the focused panel to the whole
+    screen and `Esc` goes back.
+  - `s` opens a sort menu (choosing the current key reverses it); the filter box sits at the bottom of the
+    Runs panel; `f` freezes the refresh. The footer is gone, the keys are on the borders.
+  - Sessions and history are loaded at start and refreshed every minute, since they are always on screen.
+  - New navy and sky-blue theme; the STATE column sits before PARTS so a `STALE` flag is never cut off.
+- `scripts/demo.py` with no arguments opens the screen on sample data.
+
 ## 0.4.1
 
 - Docs and README only, so the PyPI page is right: install is `uv tool install clawtop`, PyPI and version badges,

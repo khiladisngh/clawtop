@@ -8,8 +8,8 @@ Windows it forwards to WSL.
 ```sh
 uv tool install clawtop
 clawtop --version
-clawtop        # one-shot overview
-clawtop top    # the interactive screen
+clawtop        # opens the interactive screen
+clawtop status # a one-shot printout instead (what scripts get)
 ```
 
 Or with pipx (`pipx install clawtop`) or pip (`pip install clawtop`) if you prefer. The package is on

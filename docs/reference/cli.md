@@ -5,7 +5,8 @@ Run `clawtop COMMAND --help` for the same information in your terminal. `-h` is 
 
 ## `clawtop`
 
-With no command, prints the status overview. `--version` prints the version.
+With no command, opens the interactive screen (the same as `clawtop top`). When there is no terminal (a pipe,
+cron, a script) it prints the [`clawtop status`](#clawtop-status) overview instead. `--version` prints the version.
 
 ## `clawtop status`
 
@@ -16,7 +17,7 @@ With no command, prints the status overview. `--version` prints the version.
 
 ## `clawtop top`
 
-The interactive, htop-style screen. Needs a terminal (exit code 1 otherwise). All keys are listed in
+The interactive, bottom-style screen, with options. Plain `clawtop` opens it with the defaults. Needs a terminal (exit code 1 otherwise). All keys are listed in
 [Interactive view](../guides/interactive-top.md) and under `?` inside the program.
 
 | Option | Default | Meaning |

@@ -3,10 +3,10 @@
 ## One-off overview
 
 ```sh
-clawtop
+clawtop status
 ```
 
-(`clawtop status` is the same.) The panel has three parts:
+(Plain `clawtop` prints the same thing when its output is not a terminal, for example in a pipe.) The panel has three parts:
 
 - **Bars.** `VM` is the whole WSL/Linux machine. `Gateway` is the gateway's cgroup measured against its
   `MemoryHigh` limit, or against the VM when no limit is set.
@@ -21,11 +21,11 @@ clawtop
 ## Live view
 
 ```sh
-clawtop top
+clawtop
 ```
 
-An interactive screen with sorting, filtering, marking, kill and a session tree. See
-[Interactive view](interactive-top.md).
+An interactive dashboard with a memory graph, sorting, filtering, marking, kill and a session tree. See
+[The interactive screen](interactive-top.md).
 
 ## For scripts
 

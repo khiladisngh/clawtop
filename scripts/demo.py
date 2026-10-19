@@ -1,5 +1,6 @@
 """Run the real clawtop CLI against made-up sample data: no gateway, no WSL, nothing is killed.
 
+    uv run python scripts/demo.py            # the interactive screen (same as: demo.py top)
     uv run python scripts/demo.py status
     uv run python scripts/demo.py sessions tree
     CLAWTOP_DEMO_ANSWERS="stale;y" uv run python scripts/demo.py kill      # scripted picker answers
@@ -188,7 +189,7 @@ def run_top() -> int:
 
 
 def main() -> int:
-    if sys.argv[1:2] == ["top"]:
+    if sys.argv[1:2] in ([], ["top"]):  # like the real thing: bare `clawtop` opens the screen
         return run_top()
     answers = [a for a in os.environ.get("CLAWTOP_DEMO_ANSWERS", "").split(";") if a]
     interactive = bool(answers)  # read once: answers are consumed as the prompts are answered

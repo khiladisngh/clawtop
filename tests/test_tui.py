@@ -7,12 +7,12 @@ from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 
 from textual.pilot import Pilot
-from textual.widgets import DataTable, Static, TabbedContent
+from textual.widgets import DataTable, Static
 
 from clawtop import history as hist
 from clawtop import sessions as sess
 from clawtop.procs import Snapshot, Stack
-from clawtop.tui.app import ClawtopApp, ConfirmScreen, HelpScreen
+from clawtop.tui.app import ClawtopApp, ConfirmScreen, HelpScreen, Panel, SortScreen
 
 from .conftest import snapshot, stack
 
@@ -44,6 +44,7 @@ def make_app(
     **kwargs: object,
 ) -> ClawtopApp:
     snap = snapshot(stacks)
+    kwargs.setdefault("sessions_fn", list)  # never shell out to a real `openclaw` from a test
 
     def kill(s: Stack) -> list[int]:
         time.sleep(kill_delay)
@@ -78,12 +79,19 @@ def test_runs_are_listed_biggest_first_and_the_first_is_highlighted() -> None:
     drive(make_app(three()), script)
 
 
-def test_sort_key_cycles_and_reverses_and_filter_narrows_then_clears() -> None:
+def test_sort_menu_picks_a_key_and_picking_the_current_one_reverses_then_filter_narrows_and_clears() -> None:
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
-        await pilot.press("s")  # mem -> idle: known idle first (longest), unknown last
+        await pilot.press("s")
+        assert isinstance(app.screen, SortScreen)
+        await pilot.press("down", "enter")  # Memory -> Idle: known idle first (longest), unknown last
+        assert not isinstance(app.screen, SortScreen)
         assert app.sort_key == "idle" and [s.pid for s in app.shown] == [20, 10, 30]
         await pilot.press("i")
         assert [s.pid for s in app.shown] == [10, 20, 30]
+        await pilot.press("s", "enter")  # the menu opens on the current key; choosing it again reverses
+        assert [s.pid for s in app.shown] == [20, 10, 30]
+        await pilot.press("s", "escape")  # closing the menu changes nothing
+        assert app.sort_key == "idle" and app.descending
         await pilot.press("slash")
         await pilot.press(*"gemini")
         assert [s.pid for s in app.shown] == [30]
@@ -167,7 +175,9 @@ def test_cursor_stays_on_the_same_run_when_a_refresh_reorders_the_table() -> Non
         sizes = (500, 400, 300) if calls["n"] == 1 else (200, 600, 400)  # after a refresh pid 3 is second
         return snapshot([stack(pid, mb=mb) for pid, mb in zip((1, 2, 3), sizes, strict=True)])
 
-    app = ClawtopApp(interval=30, snapshot_fn=snap_fn, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(
+        interval=30, snapshot_fn=snap_fn, sessions_fn=list, log_path=Path("x"), load_history_fn=lambda _s: []
+    )
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         await pilot.press("down", "down")  # highlight pid 3, the last row
@@ -187,7 +197,9 @@ def test_pause_stops_refreshing_and_resume_continues() -> None:
         calls["n"] += 1
         return snapshot(three())
 
-    app = ClawtopApp(interval=0.1, snapshot_fn=snap_fn, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(
+        interval=0.1, snapshot_fn=snap_fn, sessions_fn=list, log_path=Path("x"), load_history_fn=lambda _s: []
+    )
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         await pilot.press("p")
@@ -222,7 +234,7 @@ def _sessions() -> list[sess.Session]:
     return [main, sub, done]
 
 
-def test_sessions_tab_shows_subagents_under_their_parent_and_archives_after_confirmation() -> None:
+def test_sessions_panel_shows_subagents_under_their_parent_and_archives_after_confirmation() -> None:
     archived: list[str] = []
 
     def archive(items: Sequence[sess.Session]) -> list[dict[str, object]]:
@@ -271,35 +283,38 @@ def test_archiving_a_group_row_or_a_finished_session_does_nothing() -> None:
     drive(app, script)
 
 
-def test_history_tab_uses_the_chosen_span_and_survives_an_empty_log() -> None:
+def test_history_panel_uses_the_chosen_span_and_survives_an_empty_log() -> None:
     spans: list[float] = []
 
     def load(span: float) -> list[hist.Sample]:
         spans.append(span)
         return []
 
-    app = ClawtopApp(interval=30, snapshot_fn=lambda: snapshot(three()), log_path=Path("x"), load_history_fn=load)
+    app = ClawtopApp(
+        interval=30, snapshot_fn=lambda: snapshot(three()), sessions_fn=list, log_path=Path("x"), load_history_fn=load
+    )
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
-        spans.clear()
+        assert 6 * 3600.0 in spans  # the panel is filled at start, with the default 6h
         await pilot.press("3")
         await settle(app, pilot)
-        assert spans == [6 * 3600.0]  # default 6h
+        assert app.focused is not None and app.focused.id == "history-scroll"
         await pilot.press("h")
         await settle(app, pilot)
         assert spans[-1] == 24 * 3600.0
-        assert app.query_one(TabbedContent).active == "history"
-        assert app.query_one("#history-body", Static) is not None
+        assert "No samples" in str(app.query_one("#history-body", Static).render())
 
     drive(app, script)
 
 
-def test_tab_specific_keys_are_hidden_on_other_tabs_and_help_opens_and_closes() -> None:
+def test_keys_belong_to_the_focused_panel_and_help_opens_and_closes() -> None:
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         assert app.check_action("kill", ()) is True and app.check_action("archive", ()) is False
         await pilot.press("2")
         await settle(app, pilot)
         assert app.check_action("kill", ()) is False and app.check_action("archive", ()) is True
+        await pilot.press("x")  # a runs key, but the sessions panel has the focus: nothing happens
+        assert not isinstance(app.screen, ConfirmScreen)
         await pilot.press("question_mark")
         assert isinstance(app.screen, HelpScreen)
         await pilot.press("escape")
@@ -312,7 +327,7 @@ def test_a_failing_snapshot_is_reported_and_does_not_end_the_session() -> None:
     def boom() -> Snapshot:
         raise OSError("proc vanished")
 
-    app = ClawtopApp(interval=30, snapshot_fn=boom, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(interval=30, snapshot_fn=boom, sessions_fn=list, log_path=Path("x"), load_history_fn=lambda _s: [])
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         assert app.snap is None
@@ -337,7 +352,7 @@ def test_j_and_k_move_the_cursor_but_are_plain_text_inside_the_filter_box() -> N
     drive(make_app(three()), script)
 
 
-def test_arrow_keys_work_on_the_sessions_tab_without_clicking_first() -> None:
+def test_arrow_keys_work_in_the_sessions_panel_without_clicking_first() -> None:
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         await pilot.press("2")
         await settle(app, pilot)
@@ -362,7 +377,9 @@ def test_a_snapshot_slower_than_the_interval_still_updates_and_does_not_pile_up(
             release.wait(timeout=10)  # the first snapshot is "stuck" while many ticks go by
         return snapshot(three())
 
-    app = ClawtopApp(interval=0.05, snapshot_fn=slow, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(
+        interval=0.05, snapshot_fn=slow, sessions_fn=list, log_path=Path("x"), load_history_fn=lambda _s: []
+    )
 
     async def go() -> None:
         # Not drive(): that waits for every worker to finish, and the first snapshot is stuck on purpose.
@@ -386,7 +403,9 @@ def test_a_refresh_that_lands_behind_an_open_dialog_still_updates_the_main_scree
         calls["n"] += 1
         return snapshot(three() if calls["n"] == 1 else three()[:1])  # the second snapshot has one run
 
-    app = ClawtopApp(interval=30, snapshot_fn=snap_fn, log_path=Path("x"), load_history_fn=lambda _s: [])
+    app = ClawtopApp(
+        interval=30, snapshot_fn=snap_fn, sessions_fn=list, log_path=Path("x"), load_history_fn=lambda _s: []
+    )
 
     async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
         assert len(app.shown) == 3
@@ -415,3 +434,48 @@ def test_a_second_kill_is_refused_while_the_first_is_still_running() -> None:
         assert sorted(killed) == [20, 30]  # both runs of the first kill completed, each exactly once
 
     drive(make_app(three(), killed=killed, kill_delay=0.4), script)
+
+
+def test_e_expands_the_focused_panel_to_the_whole_screen_and_escape_goes_back() -> None:
+    async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
+        main = app.screen_stack[0]
+        visible = lambda: {p.id for p in main.query(Panel) if p.display}  # noqa: E731
+        assert len(visible()) == 6
+        await pilot.press("e")
+        await pilot.pause(0.1)
+        assert app.expanded == "p-runs" and visible() == {"p-runs"}
+        assert main.query_one("#p-runs").border_subtitle == "Esc to go back"
+        await pilot.press("2")  # moving to another panel keeps the screen expanded, on that panel
+        await pilot.pause(0.1)
+        assert app.expanded == "p-sessions" and visible() == {"p-sessions"}
+        await pilot.press("escape")
+        await pilot.pause(0.1)
+        assert app.expanded is None and len(visible()) == 6
+        assert "x kill" in str(main.query_one("#p-runs").border_subtitle)  # the hint is back
+
+    drive(make_app(three(), sessions_fn=_sessions), script)
+
+
+def test_escape_closes_the_filter_before_it_collapses_an_expanded_panel() -> None:
+    async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
+        await pilot.press("e", "slash")
+        await pilot.press(*"gem")
+        await pilot.press("escape")
+        assert app.filter_text == "" and app.expanded == "p-runs"  # only the filter went away
+        await pilot.press("escape")
+        assert app.expanded is None
+
+    drive(make_app(three()), script)
+
+
+def test_tab_moves_the_focus_between_panels_and_the_focused_one_is_bright() -> None:
+    async def script(app: ClawtopApp, pilot: Pilot[None]) -> None:
+        seen = [app._focus_panel()]  # pyright: ignore[reportPrivateUsage]
+        for _ in range(4):
+            await pilot.press("tab")
+            seen.append(app._focus_panel())  # pyright: ignore[reportPrivateUsage]
+        assert seen[0] == "p-graph" or seen[0] == "p-runs"
+        assert {"p-graph", "p-runs", "p-sessions", "p-history"} <= set(seen)
+        assert app.screen_stack[0].query_one(f"#{seen[-1]}").has_pseudo_class("focus-within")
+
+    drive(make_app(three()), script)

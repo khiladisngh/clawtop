@@ -191,3 +191,27 @@ def test_top_refuses_to_run_without_a_terminal_and_points_at_status() -> None:
 def test_the_old_watch_command_is_gone_in_favour_of_top() -> None:
     assert runner.invoke(cli.app, ["watch"]).exit_code == 2  # unknown command
     assert "top" in runner.invoke(cli.app, ["--help"]).output
+
+
+def test_bare_command_opens_the_screen_on_a_terminal_and_prints_status_otherwise(
+    two_stacks: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened: list[tuple[float, float]] = []
+    monkeypatch.setattr(cli, "_open_screen", lambda interval, stale_min: opened.append((interval, stale_min)))
+    monkeypatch.setattr(cli, "_has_terminal", lambda: True)
+    r = runner.invoke(cli.app, [])
+    assert r.exit_code == 0 and opened == [(2.0, cli.ui.STALE_IDLE_MIN)]
+    assert "Agent run stacks" not in r.output  # the screen replaced the printout
+
+    monkeypatch.setattr(cli, "_has_terminal", lambda: False)  # a pipe, cron, a script
+    r = runner.invoke(cli.app, [])
+    assert r.exit_code == 0 and len(opened) == 1  # not opened again
+    assert "Agent run stacks" in r.output
+
+
+def test_top_passes_its_options_to_the_screen(monkeypatch: pytest.MonkeyPatch) -> None:
+    opened: list[tuple[float, float]] = []
+    monkeypatch.setattr(cli, "_open_screen", lambda interval, stale_min: opened.append((interval, stale_min)))
+    monkeypatch.setattr(cli, "_has_terminal", lambda: True)
+    assert runner.invoke(cli.app, ["top", "-i", "1", "--stale-min", "10"]).exit_code == 0
+    assert opened == [(1.0, 10)]
